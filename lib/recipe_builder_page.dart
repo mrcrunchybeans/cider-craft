@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
-
+import 'widgets/add_additive_dialog.dart';
 import 'widgets/add_fermentable_dialog.dart';
-import 'widgets/additives_section.dart';
 import 'utils/utils.dart';
 
 final logger = Logger();
@@ -135,7 +134,8 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
             final f = entry.value;
             return ListTile(
               title: Text(f['name'] ?? 'Unnamed'),
-              subtitle: Text("${f['amount_lb']} lb, OG: ${f['og']?.toStringAsFixed(3) ?? '—'}"),
+              subtitle: Text(
+                  "${f['amount_lb']} lb, OG: ${f['og']?.toStringAsFixed(3) ?? '—'}"),
               trailing: IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () => editFermentable(i),
@@ -146,11 +146,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
           _buildSectionTitle("Additives", onAdd: () async {
             final result = await showDialog<Map<String, dynamic>>(
               context: context,
-              builder: (_) => AdditivesSection(
-                mustPH: 3.4,
-                volume: 5.0,
-                onAdd: addAdditive,
-              ),
+              builder: (_) => const AddAdditiveDialog(),
             );
             if (result != null) addAdditive(result);
           }),
