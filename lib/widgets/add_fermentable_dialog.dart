@@ -36,10 +36,10 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
     super.initState();
     if (widget.existing != null) {
       final f = widget.existing!;
-      nameController.text = f['name'];
-      amountController.text = f['amount'].toString();
-      amountUnit = f['unit'] ?? 'oz';
-      type = f['type'] ?? 'Juice';
+      nameController.text = f['name']?.toString() ?? '';
+      amountController.text = f['amount']?.toString() ?? '';
+      amountUnit = f['unit']?.toString() ?? 'oz';
+      type = f['type']?.toString() ?? 'Juice';
       ogController.text = f['og']?.toString() ?? '';
       phController.text = f['ph']?.toString() ?? '';
     }
@@ -61,14 +61,19 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isEditing = widget.existing != null;
+
     return AlertDialog(
-      title: const Text("Add Fermentable"),
+      title: Text(isEditing ? "Edit Fermentable" : "Add Fermentable"),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
               Row(
                 children: [
                   Expanded(
@@ -83,7 +88,10 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
                     value: amountUnit,
                     onChanged: (val) => setState(() => amountUnit = val!),
                     items: ['oz', 'ml', 'gal']
-                        .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
+                        .map((unit) => DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            ))
                         .toList(),
                   ),
                 ],
@@ -92,7 +100,10 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
                 value: type,
                 onChanged: (val) => setState(() => type = val!),
                 items: ['Juice', 'Fruit', 'Concentrate', 'Other']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e),
+                        ))
                     .toList(),
                 decoration: const InputDecoration(labelText: 'Type'),
               ),
@@ -122,21 +133,22 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () {
-            widget.onAddToInventory(buildFermentable());
-            Navigator.of(context).pop();
-          },
-          child: const Text("Add to Inventory"),
-        ),
+        if (!isEditing)
+          TextButton(
+            onPressed: () {
+              widget.onAddToInventory(buildFermentable());
+              Navigator.of(context).pop();
+            },
+            child: const Text("Add to Inventory"),
+          ),
         TextButton(
           onPressed: () {
             final f = buildFermentable();
             widget.onAddToRecipe(f);
-            logger.i("Saved Fermentable: $f");
+            logger.i("${isEditing ? "Updated" : "Saved"} Fermentable: $f");
             Navigator.of(context).pop();
           },
-          child: const Text("Save"),
+          child: Text(isEditing ? "Save Changes" : "Add"),
         ),
       ],
     );

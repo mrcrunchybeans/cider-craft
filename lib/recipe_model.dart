@@ -1,0 +1,27 @@
+import 'package:hive/hive.dart';
+
+@HiveType(typeId: 0)
+class RecipeModel extends HiveObject {
+  @HiveField(0)
+  String name;
+
+  @HiveField(1)
+  List<String> tags;
+
+  @HiveField(2)
+  List<Map<String, dynamic>> fermentables;
+
+  @HiveField(3)
+  List<Map<String, dynamic>> additives;
+
+  @HiveField(4)
+  List<Map<String, dynamic>> fermentationStages;
+
+  RecipeModel({
+    required this.name,
+    required this.tags,
+    required this.fermentables,
+    required this.additives,
+    required this.fermentationStages,
+  });
+}

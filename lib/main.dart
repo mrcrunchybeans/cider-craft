@@ -1,13 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/utils/temp_display.dart';
+import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/recipe_model.dart';
 import 'batch_log_page.dart';
 import 'inventory_page.dart';
-import 'recipe_builder_page.dart';
+import 'recipe_list_page.dart';
 import 'settings_page.dart';
 import 'tools_page.dart';
+import 'models/settings_model.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  Hive.registerAdapter(RecipeModelAdapter());
+  await Hive.openBox<RecipeModel>('recipes');
+  await Hive.openBox('settings');
 
-void main() {
-  runApp(CiderCraftApp());
+  final useCelsius = Hive.box('settings').get('useCelsius', defaultValue: true);
+  TempDisplay.setUseFahrenheit(!useCelsius);
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) {
+        final model = SettingsModel();
+        model.setUnitFromStorage(useCelsius);
+        return model;
+      },
+      child: const CiderCraftApp(),
+    ),
+    
+  );
 }
 
 class CiderCraftApp extends StatelessWidget {
@@ -20,7 +43,7 @@ class CiderCraftApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.pink,
       ),
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
@@ -38,18 +61,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _getPage() {
     switch (_selectedPage) {
       case 'Batches':
-        return BatchLogPage(); // ✅
+        return const BatchLogPage();
       case 'Inventory':
-       return InventoryPage();
+        return const InventoryPage();
       case 'Tools':
-        return ToolsPage();
+        return const ToolsPage();
       case 'Settings':
-        return SettingsPage();
+        return const SettingsPage();
       case 'Recipes':
-       default:
-         return RecipeBuilderPage(); // ✅
+      default:
+        return const RecipeListPage();
+    }
   }
-}
 
   void _selectPage(String page) {
     Navigator.pop(context); // close the drawer
@@ -65,8 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(
         child: ListView(
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: const Color.fromARGB(255, 108, 147, 73)),
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Color.fromARGB(255, 108, 147, 73)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -79,28 +102,28 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.book),
-              title: Text('Recipes'),
+              leading: const Icon(Icons.book),
+              title: const Text('Recipes'),
               onTap: () => _selectPage('Recipes'),
             ),
             ListTile(
-              leading: Icon(Icons.local_drink),
-              title: Text('Batches'),
+              leading: const Icon(Icons.local_drink),
+              title: const Text('Batches'),
               onTap: () => _selectPage('Batches'),
             ),
             ListTile(
-              leading: Icon(Icons.inventory),
-              title: Text('Inventory'),
+              leading: const Icon(Icons.inventory),
+              title: const Text('Inventory'),
               onTap: () => _selectPage('Inventory'),
             ),
             ListTile(
-              leading: Icon(Icons.science),
-              title: Text('Tools'),
+              leading: const Icon(Icons.science),
+              title: const Text('Tools'),
               onTap: () => _selectPage('Tools'),
             ),
             ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Settings'),
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
               onTap: () => _selectPage('Settings'),
             ),
           ],
@@ -110,5 +133,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-// This is the main entry point of the CiderCraft app.
-// It sets up the MaterialApp with a home screen that includes a navigation drawer.
