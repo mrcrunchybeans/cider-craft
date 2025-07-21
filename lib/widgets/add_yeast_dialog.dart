@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 class AddYeastDialog extends StatefulWidget {
-  final void Function(Map<String, dynamic>) onAdd;
   final Map<String, dynamic>? existing;
+  final Function(Map<String, dynamic>) onAdd;
 
   const AddYeastDialog({
     super.key,
-    required this.onAdd,
     this.existing,
+    required this.onAdd,
   });
 
   @override
@@ -15,71 +15,78 @@ class AddYeastDialog extends StatefulWidget {
 }
 
 class _AddYeastDialogState extends State<AddYeastDialog> {
-  final _formKey = GlobalKey<FormState>();
+  final List<String> commonYeasts = [
+    'Lalvin EC-1118',
+    'Red Star Premier Blanc',
+    'Safale US-05',
+    'Wyeast 1056 American Ale',
+    'Lalvin D-47',
+    'Lalvin K1-V1116',
+    'Nottingham Ale Yeast',
+    'WLP001 California Ale',
+    'Mangrove Jack’s M02 Cider',
+    'Other (Custom)',
+  ];
 
-  final nameController = TextEditingController();
-  final amountController = TextEditingController();
-
-  String unit = "g";
-
-  final List<String> unitOptions = ["g", "packets"];
+  String selectedYeast = 'Lalvin EC-1118';
+  final TextEditingController customYeastController = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
+  String unit = 'grams';
 
   @override
   void initState() {
     super.initState();
     if (widget.existing != null) {
-      nameController.text = widget.existing!['name'] ?? '';
-      amountController.text = widget.existing!['amount']?.toString() ?? '';
-      unit = widget.existing!['unit'] ?? 'g';
-    }
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    amountController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      widget.onAdd({
-        'name': nameController.text.trim(),
-        'amount': double.tryParse(amountController.text) ?? 0.0,
-        'unit': unit,
-      });
-      Navigator.of(context).pop();
+      final yeast = widget.existing!;
+      selectedYeast = commonYeasts.contains(yeast['name']) ? yeast['name'] : 'Other (Custom)';
+      customYeastController.text = selectedYeast == 'Other (Custom)' ? yeast['name'] : '';
+      amountController.text = yeast['amount']?.toString() ?? '';
+      unit = yeast['unit'] ?? 'grams';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing != null ? "Edit Yeast" : "Add Yeast"),
-      content: Form(
-        key: _formKey,
+      title: const Text("Add Yeast"),
+      content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Yeast Name"),
-              validator: (val) =>
-                  val == null || val.trim().isEmpty ? "Enter yeast name" : null,
+            DropdownButtonFormField<String>(
+              value: selectedYeast,
+              items: commonYeasts
+                  .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => selectedYeast = val);
+                }
+              },
+              decoration: const InputDecoration(labelText: "Select Yeast"),
             ),
+            if (selectedYeast == 'Other (Custom)')
+              TextFormField(
+                controller: customYeastController,
+                decoration: const InputDecoration(labelText: "Custom Yeast Name"),
+              ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: amountController,
               decoration: const InputDecoration(labelText: "Amount"),
               keyboardType: TextInputType.numberWithOptions(decimal: true),
-              validator: (val) =>
-                  val == null || val.isEmpty ? "Enter amount" : null,
             ),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: unit,
-              items: unitOptions
+              items: ['grams', 'packets']
                   .map((u) => DropdownMenuItem(value: u, child: Text(u)))
                   .toList(),
-              onChanged: (val) => setState(() => unit = val ?? "g"),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => unit = val);
+                }
+              },
               decoration: const InputDecoration(labelText: "Unit"),
             ),
           ],
@@ -87,11 +94,20 @@ class _AddYeastDialogState extends State<AddYeastDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: _submit,
+          onPressed: () {
+            final name = selectedYeast == 'Other (Custom)'
+                ? customYeastController.text.trim()
+                : selectedYeast;
+            final amount = double.tryParse(amountController.text.trim()) ?? 0.0;
+
+            widget.onAdd({
+              'name': name,
+              'amount': amount,
+              'unit': unit,
+            });
+
+            Navigator.of(context).pop();
+          },
           child: const Text("Save"),
         ),
       ],
