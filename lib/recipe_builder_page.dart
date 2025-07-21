@@ -10,7 +10,7 @@ import 'utils/utils.dart';
 import 'models/recipe_model.dart';
 import 'recipe_list_page.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_application_1/widgets/tag_picker_dialog.dart';
+import 'widgets/tag_picker_dialog.dart';
 import 'package:flutter_application_1/models/tag_manager.dart';
 
 final logger = Logger();
@@ -172,7 +172,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tagManager = Provider.of<TagManager>(context);
+    Provider.of<TagManager>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text("Cider Recipe Builder"),
@@ -207,7 +207,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
                 icon: const Icon(Icons.label),
                 label: const Text("Choose Tags"),
                 onPressed: () async {
-                  final result = await showTagPickerDialog(context, tags, tagManager);
+                  final result = await showTagPickerDialog(context, tags);
                   if (result != null) {
                     setState(() => tags = result);
                   }

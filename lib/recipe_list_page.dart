@@ -6,7 +6,6 @@ import 'package:flutter_application_1/recipe_builder_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'models/recipe_model.dart';
-import 'models/tag.dart';
 
 class RecipeListPage extends StatefulWidget {
   const RecipeListPage({super.key});
