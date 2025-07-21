@@ -34,6 +34,7 @@ class RecipeBuilderPage extends StatefulWidget {
 }
 
 class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
+  final TextEditingController nameController = TextEditingController();
   double abv = 0.0;
   List<Map<String, dynamic>> additives = [];
   List<Map<String, dynamic>> fermentables = [];
@@ -49,6 +50,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     super.initState();
     if (widget.existingRecipe != null) {
       final recipe = widget.existingRecipe!;
+      nameController.text = recipe.name;
       additives = List<Map<String, dynamic>>.from(recipe.additives);
       fermentables = List<Map<String, dynamic>>.from(recipe.fermentables);
       fermentationStages = List<Map<String, dynamic>>.from(recipe.fermentationStages);
@@ -148,60 +150,63 @@ void editYeast() async {
   }
 
   void saveRecipe() {
-    showDialog(
-      context: context,
-      builder: (_) {
-        final nameController = TextEditingController(
-          text: widget.existingRecipe?.name ?? '',
-        );
-        return AlertDialog(
-          title: Text(widget.isClone ? "Clone Recipe" : widget.existingRecipe != null ? "Edit Recipe" : "Save Recipe"),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: "Recipe Name"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                final recipeName = nameController.text;
+  final recipeName = nameController.text.trim();
 
-                final newRecipe = RecipeModel(
-                  name: recipeName,
-                  tags: tags,
-                  createdAt: DateTime.now(),
-                  og: og,
-                  fg: fg,
-                  abv: abv,
-                  additives: additives,
-                  fermentables: fermentables,
-                  yeast: yeast,
-                  fermentationStages: fermentationStages,
-                );
-
-                final box = Hive.box<RecipeModel>('recipes');
-
-                if (widget.existingRecipe != null && !widget.isClone && widget.recipeKey != null) {
-                  await box.put(widget.recipeKey, newRecipe);
-                } else {
-                  await box.add(newRecipe);
-                }
-
-                logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: $recipeName");
-
-                if (!mounted) return;
-
-                Navigator.of(context).pop();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const RecipeListPage()),
-                );
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+  if (recipeName.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please enter a recipe name.")),
     );
+    return;
   }
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Confirm Save"),
+      content: Text("Save recipe as \"$recipeName\"?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final newRecipe = RecipeModel(
+              name: recipeName,
+              tags: tags,
+              createdAt: DateTime.now(),
+              og: og,
+              fg: fg,
+              abv: abv,
+              additives: additives,
+              fermentables: fermentables,
+              yeast: yeast,
+              fermentationStages: fermentationStages,
+            );
+
+            final box = Hive.box<RecipeModel>('recipes');
+
+            if (widget.existingRecipe != null && !widget.isClone && widget.recipeKey != null) {
+              await box.put(widget.recipeKey, newRecipe);
+            } else {
+              await box.add(newRecipe);
+            }
+
+            logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: $recipeName");
+
+            if (!mounted) return;
+            Navigator.of(context).pop(); // Close dialog
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const RecipeListPage()),
+            );
+          },
+          child: const Text("Save"),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildSectionTitle(String title, {VoidCallback? onAdd}) {
     return Row(
@@ -240,6 +245,17 @@ void editYeast() async {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: "Recipe Name",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           const SizedBox(height: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
