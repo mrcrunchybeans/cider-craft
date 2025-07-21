@@ -99,6 +99,16 @@ class RecipeDetailPage extends StatelessWidget {
 
           const Divider(),
 
+
+          const Text("Yeast", style: TextStyle(fontWeight: FontWeight.bold)),
+          ...recipe.yeast.map((y) => ListTile(
+            title: Text(y['name']),
+            subtitle: Text("${y['amount']} ${y['unit']}"),
+          )),
+
+          const Divider(),
+
+
           const Text("Fermentation Profile", style: TextStyle(fontWeight: FontWeight.bold)),
 ...recipe.fermentationStages.map((stage) => ListTile(
   title: Text(stage['name']),
