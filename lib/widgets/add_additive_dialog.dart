@@ -5,12 +5,14 @@ class AddAdditiveDialog extends StatefulWidget {
   final double mustPH;
   final double volume; // in gallons
   final void Function(Map<String, dynamic>) onAdd;
+  final Map<String, dynamic>? existing;
 
   const AddAdditiveDialog({
     super.key,
     required this.mustPH,
     required this.volume,
     required this.onAdd,
+    this.existing,
   });
 
   @override
@@ -23,7 +25,9 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
   String name = "Potassium Metabisulphite";
   String unit = "grams";
   double amount = 0.0;
+
   final amountController = TextEditingController();
+  final customNameController = TextEditingController();
 
   final List<String> additiveOptions = [
     "Acid Blend",
@@ -37,10 +41,32 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
 
   final List<String> unitOptions = ["grams", "Campden Tablets", "tsp", "mL"];
 
+  bool isCustom = false;
+
   @override
   void initState() {
     super.initState();
-    _autoCalculateAmount();
+
+    if (widget.existing != null) {
+      name = widget.existing!['name'] ?? "Custom";
+      amount = widget.existing!['amount'] ?? 0.0;
+      unit = widget.existing!['unit'] ?? "grams";
+
+      if (!additiveOptions.contains(name)) {
+        isCustom = true;
+        name = "Custom";
+        customNameController.text = widget.existing!['name'];
+      } else {
+        isCustom = name == "Custom";
+        if (isCustom) {
+          customNameController.text = widget.existing!['name'];
+        }
+      }
+
+      amountController.text = amount.toString();
+    } else {
+      _autoCalculateAmount();
+    }
   }
 
   void _autoCalculateAmount() {
@@ -57,20 +83,24 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
     if (selected == null) return;
     setState(() {
       name = selected;
+      isCustom = name == "Custom";
+
       if (name == "Potassium Metabisulphite") {
         unit = "grams";
         _autoCalculateAmount();
       } else {
         amount = 0.0;
         amountController.clear();
+        customNameController.clear();
       }
     });
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      final finalName = isCustom ? customNameController.text.trim() : name;
       widget.onAdd({
-        "name": name,
+        "name": finalName,
         "amount": double.tryParse(amountController.text) ?? 0.0,
         "unit": unit,
       });
@@ -81,13 +111,14 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
   @override
   void dispose() {
     amountController.dispose();
+    customNameController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Add Additive"),
+      title: Text(widget.existing != null ? "Edit Additive" : "Add Additive"),
       content: Form(
         key: _formKey,
         child: Column(
@@ -101,6 +132,13 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
               onChanged: _onNameChanged,
               decoration: const InputDecoration(labelText: "Additive"),
             ),
+            if (isCustom)
+              TextFormField(
+                controller: customNameController,
+                decoration: const InputDecoration(labelText: "Custom Name"),
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? "Enter a custom name" : null,
+              ),
             TextFormField(
               controller: amountController,
               decoration: const InputDecoration(labelText: "Amount"),
@@ -121,7 +159,9 @@ class _AddAdditiveDialogState extends State<AddAdditiveDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        ElevatedButton(onPressed: _submit, child: const Text("Add")),
+        ElevatedButton(
+            onPressed: _submit,
+            child: Text(widget.existing != null ? "Update" : "Add")),
       ],
     );
   }

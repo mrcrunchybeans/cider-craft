@@ -61,7 +61,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     fg = CiderUtils.estimateFG();
     abv = CiderUtils.calculateABV(og, fg);
     setState(() {});
-    logger.i('Recalculated stats: OG=\$og, FG=\$fg, ABV=\$abv');
+    logger.i('Recalculated stats: OG=$og, FG=$fg, ABV=$abv');
   }
 
   void addFermentable(Map<String, dynamic> f) {
@@ -72,7 +72,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
       }
     });
     calculateStats();
-    logger.d("Added fermentable: \${f['name']}");
+    logger.d("Added fermentable: ${f['name']}");
   }
 
   void editFermentable(int index) async {
@@ -93,11 +93,30 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     );
   }
 
+  void editAdditive(int index) async {
+    final existing = additives[index];
+
+    await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => AddAdditiveDialog(
+        mustPH: 3.4,
+        volume: 5.0,
+        existing: existing,
+        onAdd: (updated) {
+          setState(() {
+            additives[index] = updated;
+          });
+          calculateStats();
+        },
+      ),
+    );
+  }
+
   void addAdditive(Map<String, dynamic> a) {
     setState(() {
       additives.add(a);
     });
-    logger.d("Added additive: \${a['name']}");
+    logger.d("Added additive: ${a['name']}");
   }
 
   void saveRecipe() {
@@ -138,7 +157,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
                   await box.add(newRecipe);
                 }
 
-                logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: \$recipeName");
+                logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: $recipeName");
 
                 if (!mounted) return;
 
@@ -273,13 +292,22 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
             return ListTile(
               title: Text(a['name']),
               subtitle: Text("${a['amount']} ${a['unit']}"),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () {
-                  setState(() {
-                    additives.removeAt(i);
-                  });
-                },
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => editAdditive(i),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      setState(() {
+                        additives.removeAt(i);
+                      });
+                    },
+                  ),
+                ],
               ),
             );
           }),
