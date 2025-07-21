@@ -12,6 +12,8 @@ import 'recipe_list_page.dart';
 import 'package:provider/provider.dart';
 import 'widgets/tag_picker_dialog.dart';
 import 'package:flutter_application_1/models/tag_manager.dart';
+import 'widgets/add_yeast_dialog.dart';
+
 
 final logger = Logger();
 
@@ -35,6 +37,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   double abv = 0.0;
   List<Map<String, dynamic>> additives = [];
   List<Map<String, dynamic>> fermentables = [];
+  List<Map<String, dynamic>> yeast = [];
   List<Map<String, dynamic>> fermentationStages = [];
   List<Tag> tags = [];
   double fg = 1.010;
@@ -52,6 +55,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
       og = recipe.og;
       fg = recipe.fg;
       abv = recipe.abv;
+      yeast = List<Map<String, dynamic>>.from(recipe.yeast);
       tags = List<Tag>.from(recipe.tags);
     }
     calculateStats();
@@ -112,6 +116,30 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     );
   }
 
+void addYeast(Map<String, dynamic> y) {
+  setState(() {
+    yeast = [y]; // Only one yeast allowed, replace any existing
+  });
+  logger.d("Added yeast: ${y['name']}");
+}
+
+void editYeast() async {
+  final existing = yeast.isNotEmpty ? yeast.first : null;
+
+  await showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (_) => AddYeastDialog(
+      existing: existing,
+      onAdd: (updated) {
+        setState(() {
+          yeast = [updated];
+        });
+      },
+    ),
+  );
+}
+
+
   void addAdditive(Map<String, dynamic> a) {
     setState(() {
       additives.add(a);
@@ -146,6 +174,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
                   abv: abv,
                   additives: additives,
                   fermentables: fermentables,
+                  yeast: yeast,
                   fermentationStages: fermentationStages,
                 );
 
@@ -311,6 +340,40 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
               ),
             );
           }),
+
+
+          const SizedBox(height: 24),
+
+          _buildSectionTitle("Yeast", onAdd: () async {
+            final result = await showDialog<Map<String, dynamic>>(
+              context: context,
+              builder: (_) => AddYeastDialog(
+                onAdd: addYeast,
+                existing: yeast.isNotEmpty ? yeast.first : null,
+
+              ),
+            );
+            if (result != null) addYeast(result);
+          }),
+          ...yeast.map((y) => ListTile(
+            title: Text(y['name']),
+            subtitle: Text("${y['amount']} ${y['unit']}"),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: editYeast,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    setState(() => yeast.clear());
+                  },
+                ),
+              ],
+            ),
+          )),
 
           const SizedBox(height: 24),
 

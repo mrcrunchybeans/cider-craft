@@ -32,6 +32,7 @@ class RecipeModelAdapter extends TypeAdapter<RecipeModel> {
       fermentationStages: (fields[8] as List)
           .map((dynamic e) => (e as Map).cast<String, dynamic>())
           .toList(),
+      yeast: fields[9],
     );
   }
 

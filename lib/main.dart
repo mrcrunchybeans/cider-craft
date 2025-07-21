@@ -18,13 +18,15 @@ import 'models/tag.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await Hive.deleteBoxFromDisk('recipes');
+
   Hive.registerAdapter(RecipeModelAdapter());
   Hive.registerAdapter(TagAdapter());
 
   final recipeBox = await Hive.openBox<RecipeModel>('recipes');
   await Hive.openBox('settings');
   await Hive.openBox<Tag>('tags');
-  await recipeBox.clear(); // ← only do this in development!
+
 
 
   const bool isDev = true;

@@ -32,6 +32,9 @@ class RecipeModel extends HiveObject {
   @HiveField(8)
   List<Map<String, dynamic>> fermentationStages;
 
+  @HiveField(9)
+  List<Map<String, dynamic>> yeast;
+
   RecipeModel({
     required this.name,
     required this.tags,
@@ -42,5 +45,6 @@ class RecipeModel extends HiveObject {
     required this.additives,
     required this.fermentables,
     required this.fermentationStages,
+    required this.yeast,
   });
 }
