@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/recipe_detail_page.dart';
+import 'package:flutter_application_1/recipe_builder_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-
 import 'models/recipe_model.dart';
-import 'recipe_builder_page.dart'; // Make sure this import exists!
+import 'models/tag.dart';
 
 class RecipeListPage extends StatefulWidget {
   const RecipeListPage({super.key});
@@ -37,33 +37,48 @@ class _RecipeListPageState extends State<RecipeListPage> {
             return const Center(child: Text('No recipes saved yet.'));
           }
 
-          final recipes = box.values.toList();
+          final Map<String, List<RecipeModel>> grouped = {};
+
+          for (var recipe in box.values) {
+            final tags = recipe.tags.isEmpty ? ['No Tag'] : recipe.tags.map((t) => t.name);
+            for (var tag in tags) {
+              grouped.putIfAbsent(tag, () => []).add(recipe);
+            }
+          }
+
+          final sortedKeys = grouped.keys.toList()..sort();
 
           return ListView.builder(
-            itemCount: recipes.length,
+            itemCount: sortedKeys.length,
             itemBuilder: (context, index) {
-              final recipe = recipes[index];
-              return Card(
-                child: ListTile(
-                  title: Text(recipe.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Tags: ${recipe.tags.join(", ")}'),
-                      Text('Created: ${DateFormat.yMMMd().format(recipe.createdAt)}'),
-                    ],
-                  ),
-                  onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => RecipeDetailPage(recipe: recipe, index: index),
-    ),
-  );
-},
+              final tag = sortedKeys[index];
+              final recipes = grouped[tag]!;
 
+              return ExpansionTile(
+                title: Text(tag),
+                children: recipes.asMap().entries.map((entry) {
+                  final recipe = entry.value;
+                  final recipeIndex = box.values.toList().indexOf(recipe);
 
-                ),
+                  return ListTile(
+                    title: Text(recipe.name),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Tags: ${recipe.tags.map((t) => t.name).join(", ")}'),
+                        Text('Created: ${DateFormat.yMMMd().format(recipe.createdAt)}'),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RecipeDetailPage(recipe: recipe, index: recipeIndex),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
               );
             },
           );
