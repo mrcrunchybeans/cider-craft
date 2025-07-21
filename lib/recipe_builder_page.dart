@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/tag.dart';
 import 'package:flutter_application_1/utils/temp_display.dart';
 import 'package:logger/logger.dart';
 import 'package:hive/hive.dart';
@@ -9,6 +9,9 @@ import 'widgets/add_fermentable_dialog.dart';
 import 'utils/utils.dart';
 import 'models/recipe_model.dart';
 import 'recipe_list_page.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_application_1/widgets/tag_picker_dialog.dart';
+import 'package:flutter_application_1/models/tag_manager.dart';
 
 final logger = Logger();
 
@@ -33,25 +36,26 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   List<Map<String, dynamic>> additives = [];
   List<Map<String, dynamic>> fermentables = [];
   List<Map<String, dynamic>> fermentationStages = [];
+  List<Tag> tags = [];
   double fg = 1.010;
   double og = 1.050;
   bool showAdvanced = false;
 
   @override
-void initState() {
-  super.initState();
-  if (widget.existingRecipe != null) {
-    final recipe = widget.existingRecipe!;
-    additives = List<Map<String, dynamic>>.from(recipe.additives);
-    fermentables = List<Map<String, dynamic>>.from(recipe.fermentables);
-    fermentationStages = List<Map<String, dynamic>>.from(recipe.fermentationStages);
-    og = recipe.og;
-    fg = recipe.fg;
-    abv = recipe.abv;
+  void initState() {
+    super.initState();
+    if (widget.existingRecipe != null) {
+      final recipe = widget.existingRecipe!;
+      additives = List<Map<String, dynamic>>.from(recipe.additives);
+      fermentables = List<Map<String, dynamic>>.from(recipe.fermentables);
+      fermentationStages = List<Map<String, dynamic>>.from(recipe.fermentationStages);
+      og = recipe.og;
+      fg = recipe.fg;
+      abv = recipe.abv;
+      tags = List<Tag>.from(recipe.tags);
+    }
+    calculateStats();
   }
-  calculateStats();
-}
-
 
   void calculateStats() {
     fg = CiderUtils.estimateFG();
@@ -72,23 +76,22 @@ void initState() {
   }
 
   void editFermentable(int index) async {
-  final existing = fermentables[index];
+    final existing = fermentables[index];
 
-  await showDialog<Map<String, dynamic>>(
-    context: context,
-    builder: (_) => AddFermentableDialog(
-      existing: existing,
-      onAddToRecipe: (updated) {
-        setState(() {
-          fermentables[index] = updated;
-        });
-        calculateStats();
-      },
-      onAddToInventory: (_) {},
-    ),
-  );
-}
-
+    await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => AddFermentableDialog(
+        existing: existing,
+        onAddToRecipe: (updated) {
+          setState(() {
+            fermentables[index] = updated;
+          });
+          calculateStats();
+        },
+        onAddToInventory: (_) {},
+      ),
+    );
+  }
 
   void addAdditive(Map<String, dynamic> a) {
     setState(() {
@@ -98,60 +101,59 @@ void initState() {
   }
 
   void saveRecipe() {
-  showDialog(
-    context: context,
-    builder: (_) {
-      final nameController = TextEditingController(
-        text: widget.existingRecipe?.name ?? '',
-      );
-      return AlertDialog(
-        title: Text(widget.isClone ? "Clone Recipe" : widget.existingRecipe != null ? "Edit Recipe" : "Save Recipe"),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: "Recipe Name"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final recipeName = nameController.text;
-
-              final newRecipe = RecipeModel(
-                name: recipeName,
-                tags: widget.existingRecipe?.tags ?? [],
-                createdAt: DateTime.now(),
-                og: og,
-                fg: fg,
-                abv: abv,
-                additives: additives,
-                fermentables: fermentables,
-                fermentationStages: fermentationStages,
-              );
-
-              final box = Hive.box<RecipeModel>('recipes');
-
-              if (widget.existingRecipe != null && !widget.isClone && widget.recipeKey != null) {
-                await box.put(widget.recipeKey, newRecipe);
-              } else {
-                await box.add(newRecipe);
-              }
-
-              logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: $recipeName");
-
-              if (!mounted) return;
-
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const RecipeListPage()),
-              );
-            },
-            child: const Text("Save"),
+    showDialog(
+      context: context,
+      builder: (_) {
+        final nameController = TextEditingController(
+          text: widget.existingRecipe?.name ?? '',
+        );
+        return AlertDialog(
+          title: Text(widget.isClone ? "Clone Recipe" : widget.existingRecipe != null ? "Edit Recipe" : "Save Recipe"),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: "Recipe Name"),
           ),
-        ],
-      );
-    },
-  );
-}
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final recipeName = nameController.text;
 
+                final newRecipe = RecipeModel(
+                  name: recipeName,
+                  tags: tags,
+                  createdAt: DateTime.now(),
+                  og: og,
+                  fg: fg,
+                  abv: abv,
+                  additives: additives,
+                  fermentables: fermentables,
+                  fermentationStages: fermentationStages,
+                );
+
+                final box = Hive.box<RecipeModel>('recipes');
+
+                if (widget.existingRecipe != null && !widget.isClone && widget.recipeKey != null) {
+                  await box.put(widget.recipeKey, newRecipe);
+                } else {
+                  await box.add(newRecipe);
+                }
+
+                logger.i("${widget.isClone ? "Cloned" : widget.existingRecipe != null ? "Updated" : "Saved"} recipe: \$recipeName");
+
+                if (!mounted) return;
+
+                Navigator.of(context).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const RecipeListPage()),
+                );
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildSectionTitle(String title, {VoidCallback? onAdd}) {
     return Row(
@@ -170,6 +172,7 @@ void initState() {
 
   @override
   Widget build(BuildContext context) {
+    final tagManager = Provider.of<TagManager>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text("Cider Recipe Builder"),
@@ -190,6 +193,29 @@ void initState() {
             ],
           ),
           const SizedBox(height: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Tags", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: tags.map((tag) => Chip(label: Text(tag.name))).toList(),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.label),
+                label: const Text("Choose Tags"),
+                onPressed: () async {
+                  final result = await showTagPickerDialog(context, tags, tagManager);
+                  if (result != null) {
+                    setState(() => tags = result);
+                  }
+                },
+              ),
+              const Divider(thickness: 1.2),
+            ],
+          ),
 
           _buildSectionTitle("Fermentables", onAdd: () async {
             final result = await showDialog<Map<String, dynamic>>(
@@ -206,10 +232,7 @@ void initState() {
             final f = entry.value;
             return ListTile(
               title: Text(f['name'] ?? 'Unnamed'),
-              subtitle: Text(
-                 "${f['amount'] ?? '—'} ${f['unit'] ?? ''}, OG: ${f['og']?.toStringAsFixed(3) ?? '—'}"
-              ),
-                
+              subtitle: Text("${f['amount'] ?? '—'} ${f['unit'] ?? ''}, OG: ${f['og']?.toStringAsFixed(3) ?? '—'}"),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -249,7 +272,7 @@ void initState() {
             final a = entry.value;
             return ListTile(
               title: Text(a['name']),
-              subtitle: Text("${a['amount']} ${a['unit']}"),              
+              subtitle: Text("${a['amount']} ${a['unit']}"),
               trailing: IconButton(
                 icon: const Icon(Icons.delete),
                 onPressed: () {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/models/tag_manager.dart';
 import 'package:flutter_application_1/utils/temp_display.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -9,29 +10,46 @@ import 'recipe_list_page.dart';
 import 'settings_page.dart';
 import 'tools_page.dart';
 import 'models/settings_model.dart';
+import 'models/tag.dart';
+
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(RecipeModelAdapter());
-  await Hive.openBox<RecipeModel>('recipes');
+  Hive.registerAdapter(TagAdapter());
+
+  final recipeBox = await Hive.openBox<RecipeModel>('recipes');
   await Hive.openBox('settings');
+  await Hive.openBox<Tag>('tags');
+  await recipeBox.clear(); // ← only do this in development!
+
+
+  const bool isDev = true;
+  if (isDev && recipeBox.isNotEmpty) {
+    await recipeBox.clear();
+  }
 
   final useCelsius = Hive.box('settings').get('useCelsius', defaultValue: true);
   TempDisplay.setUseFahrenheit(!useCelsius);
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) {
-        final model = SettingsModel();
-        model.setUnitFromStorage(useCelsius);
-        return model;
-      },
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) {
+          final model = SettingsModel();
+          model.setUnitFromStorage(useCelsius);
+          return model;
+        }),
+        ChangeNotifierProvider(create: (_) => TagManager()),
+      ],
       child: const CiderCraftApp(),
     ),
-    
   );
 }
+
 
 class CiderCraftApp extends StatelessWidget {
   const CiderCraftApp({super.key});

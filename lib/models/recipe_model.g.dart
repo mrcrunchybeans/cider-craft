@@ -18,8 +18,8 @@ class RecipeModelAdapter extends TypeAdapter<RecipeModel> {
     };
     return RecipeModel(
       name: fields[0] as String,
-      tags: (fields[1] as List).cast<String>(),
-      createdAt: fields[2] as DateTime,
+      tags: (fields[2] as List).cast<Tag>(),
+      createdAt: fields[1] as DateTime,
       og: fields[3] as double,
       fg: fields[4] as double,
       abv: fields[5] as double,
@@ -42,9 +42,9 @@ class RecipeModelAdapter extends TypeAdapter<RecipeModel> {
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
-      ..write(obj.tags)
-      ..writeByte(2)
       ..write(obj.createdAt)
+      ..writeByte(2)
+      ..write(obj.tags)
       ..writeByte(3)
       ..write(obj.og)
       ..writeByte(4)

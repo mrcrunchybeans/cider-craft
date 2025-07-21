@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'tag.dart';
 
 part 'recipe_model.g.dart';
 
@@ -8,10 +9,10 @@ class RecipeModel extends HiveObject {
   String name;
 
   @HiveField(1)
-  List<String> tags;
+  DateTime createdAt;
 
   @HiveField(2)
-  DateTime createdAt;
+  List<Tag> tags;
 
   @HiveField(3)
   double og;
