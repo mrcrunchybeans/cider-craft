@@ -1,3 +1,5 @@
+
+
 class CiderUtils {
   /// Acidity classification based on pH
   ///
@@ -116,36 +118,43 @@ class CiderUtils {
   /// | ≤3.7 | 150            |
   /// | ≤3.8 | 200            |
   /// | >3.8 | 250            |
-  static double recommendedFreeSO2ppm(double ph) {
-    if (ph <= 3.0) {
-      return 30;
+static double recommendedFreeSO2ppm(double ph) {
+  final points = {
+    3.0: 40,
+    3.1: 50,
+    3.2: 60,
+    3.3: 70,
+    3.4: 80,
+    3.5: 100,
+    3.6: 125,
+    3.7: 150,
+    3.8: 190,
+    3.9: 220,
+  };
+
+  // Clamp input pH to range
+  if (ph <= 3.0) return 40;
+  if (ph >= 3.9) return 220;
+
+  // Find nearest two points for linear interpolation
+  final keys = points.keys.toList()..sort();
+  for (var i = 0; i < keys.length - 1; i++) {
+    final x0 = keys[i];
+    final x1 = keys[i + 1];
+    if (ph >= x0 && ph <= x1) {
+      final y0 = points[x0]!;
+      final y1 = points[x1]!;
+      final slope = (y1 - y0) / (x1 - x0);
+      return y0 + slope * (ph - x0);
     }
-    if (ph <= 3.1) {
-      return 40;
-    }
-    if (ph <= 3.2) {
-      return 50;
-    }
-    if (ph <= 3.3) {
-      return 60;
-    }
-    if (ph <= 3.4) {
-      return 75;
-    }
-    if (ph <= 3.5) {
-      return 90;
-    }
-    if (ph <= 3.6) {
-      return 120;
-    }
-    if (ph <= 3.7) {
-      return 150;
-    }
-    if (ph <= 3.8) {
-      return 200;
-    }
-    return 250;
   }
+
+  return 0; // Should never hit this
+}
+
+
+
+
 
   /// Converts Campden tablets to grams of potassium metabisulphite
   /// (1 tablet ≈ 0.44g)

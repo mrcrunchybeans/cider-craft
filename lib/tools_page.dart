@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/utils.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'package:fl_chart/fl_chart.dart';
 
 
 
@@ -227,6 +228,8 @@ class _SGCorrectionTabState extends State<SGCorrectionTab> {
   }
 }
 
+// ###################### Start of Sulfite Tool Tab #############################
+
 class SulfiteToolTab extends StatefulWidget {
   const SulfiteToolTab({super.key});
 
@@ -292,7 +295,7 @@ class _SulfiteToolTabState extends State<SulfiteToolTab> {
               width: 70,
               child: TextField(
                 controller: pHController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (val) {
                   final parsed = double.tryParse(val);
                   if (parsed != null) setState(() => pH = parsed);
@@ -301,20 +304,11 @@ class _SulfiteToolTabState extends State<SulfiteToolTab> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
         const SizedBox(height: 8),
-        Text(
-          "Recommended Free SO₂ (ppm) for pH ${pH.toStringAsFixed(2)}: ${recommendedPPM.toStringAsFixed(1)} ppm",
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.blueGrey,
-          ),
-        ),
-        const SizedBox(height: 12),
+        Text("Recommended Free SO₂: ${recommendedPPM.toStringAsFixed(0)} ppm", style: const TextStyle(color: Colors.teal)),
+        const SizedBox(height: 16),
         SwitchListTile(
           title: const Text("Use recommended PPM from pH"),
-
           value: useRecommendedPPM,
           onChanged: (val) => setState(() => useRecommendedPPM = val),
         ),
@@ -336,7 +330,7 @@ class _SulfiteToolTabState extends State<SulfiteToolTab> {
             Expanded(
               child: TextField(
                 controller: volumeController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(suffixText: "Volume"),
                 onChanged: (val) {
                   final parsed = double.tryParse(val);
@@ -361,21 +355,126 @@ class _SulfiteToolTabState extends State<SulfiteToolTab> {
           value: displayGrams,
           onChanged: (val) => setState(() => displayGrams = val),
         ),
-        Text(
-          displayGrams
-              ? "Use: ${grams.toStringAsFixed(2)} grams of K-Meta"
-              : "Use: ${tablets.toStringAsFixed(1)} Campden tablets",
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                displayGrams
+                    ? "Use: ${grams.toStringAsFixed(2)} grams of K-Meta"
+                    : "Use: ${tablets.toStringAsFixed(1)} Campden tablets",
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy),
+              tooltip: "Copy to clipboard",
+              onPressed: () {
+                final text = displayGrams
+                    ? "${grams.toStringAsFixed(2)} grams of K-Meta"
+                    : "${tablets.toStringAsFixed(1)} Campden tablets";
+                Clipboard.setData(ClipboardData(text: text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Copied: $text")),
+                );
+              },
+            ),
+          ],
         ),
+                        const Divider(thickness: 5),
+
         if (warning != null) ...[
           const SizedBox(height: 12),
           Text(warning, style: const TextStyle(color: Colors.red)),
         ],
+
+        const SizedBox(height: 24),
+        const Text(
+          "Recommended Free SO₂ (ppm) vs pH",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(
+          height: 300,
+          child: LineChart(
+            LineChartData(
+              minX: 3.0,
+              maxX: 3.9,
+              minY: 0,
+              maxY: 240,
+              lineBarsData: [
+                LineChartBarData(
+                  isCurved: true,
+                  spots: List.generate(
+                    91,
+                    (i) {
+                      final phVal = 3.0 + i * 0.01;
+                      final ppm = CiderUtils.recommendedFreeSO2ppm(phVal);
+                      return FlSpot(phVal, ppm.toDouble());
+                    },
+                  ),
+                  barWidth: 3,
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.teal.withAlpha(255),
+                      Colors.teal.withAlpha(180),
+                      Colors.teal.withAlpha(120),
+                      Colors.teal.withAlpha(60),
+                    ],
+                    stops: const [0.0, 0.4, 0.7, 1.0],
+                  ),
+                  dotData: FlDotData(show: false),
+                ),
+              ],
+              extraLinesData: ExtraLinesData(
+                verticalLines: [
+                  VerticalLine(
+                    x: pH,
+                    color: Colors.redAccent,
+                    strokeWidth: 2,
+                    dashArray: [4, 4],
+                    label: VerticalLineLabel(
+                      show: true,
+                      alignment: Alignment.topRight,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      labelResolver: (line) =>       "pH ${pH.toStringAsFixed(2)}\n${CiderUtils.recommendedFreeSO2ppm(pH).round()} ppm",
+                    ),
+                  ),
+                ],
+              ),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 40,
+                    interval: 40,
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 0.40,
+                    reservedSize: 40,
+                    getTitlesWidget: (value, _) => Text(value.toStringAsFixed(1)),
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: true),
+              gridData: FlGridData(show: true),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
-//Start of Unit Converter Tab
+
+
+// ############### Start of Unit Converter Tab ###############
 
 class UnitConverterTab extends StatelessWidget {
   const UnitConverterTab({super.key});
@@ -534,9 +633,12 @@ String formatNumber(double value) {
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 24),
                       onChanged: (val) {
-                        final parsed = double.tryParse(val);
-                        if (parsed != null) setState(() => inputValue = parsed);
-                      },
+                      final parsed = double.tryParse(val);
+                      if (parsed != null) {
+                        setState(() => inputValue = parsed);
+                      }
+                    },
+                      
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),
