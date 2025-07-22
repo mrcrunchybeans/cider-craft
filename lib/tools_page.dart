@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../utils/utils.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
+
 
 
 class ToolsPage extends StatelessWidget {
@@ -9,7 +11,7 @@ class ToolsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Cider Tools"),
@@ -19,6 +21,7 @@ class ToolsPage extends StatelessWidget {
               Tab(icon: Icon(Icons.thermostat), text: "SG Correction"),
               Tab(icon: Icon(Icons.science), text: "SO₂ Calculator"),
               Tab(icon: Icon(Icons.square), text: "Unit Converter"),
+              Tab(icon: Icon(Icons.bubble_chart), text: "Bubble Counter"),
             ],
           ),
         ),
@@ -28,6 +31,7 @@ class ToolsPage extends StatelessWidget {
             SGCorrectionTab(),
             SulfiteToolTab(),
             UnitConverterTab(),
+            BubbleCounterTab(),
           ],
         ),
       ),
@@ -298,8 +302,19 @@ class _SulfiteToolTabState extends State<SulfiteToolTab> {
           ],
         ),
         const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Text(
+          "Recommended Free SO₂ (ppm) for pH ${pH.toStringAsFixed(2)}: ${recommendedPPM.toStringAsFixed(1)} ppm",
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.blueGrey,
+          ),
+        ),
+        const SizedBox(height: 12),
         SwitchListTile(
           title: const Text("Use recommended PPM from pH"),
+
           value: useRecommendedPPM,
           onChanged: (val) => setState(() => useRecommendedPPM = val),
         ),
@@ -597,6 +612,114 @@ String formatNumber(double value) {
                 style: const TextStyle(fontStyle: FontStyle.italic),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+//Start of Bubble Counter Tab
+
+class BubbleCounterTab extends StatefulWidget {
+  const BubbleCounterTab({super.key});
+
+  @override
+  State<BubbleCounterTab> createState() => _BubbleCounterTabState();
+}
+
+class _BubbleCounterTabState extends State<BubbleCounterTab> {
+  List<DateTime> tapTimes = [];
+  double avgInterval = 0.0;
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  void recordTap() {
+    final now = DateTime.now();
+
+    setState(() {
+      tapTimes.add(now);
+
+      if (tapTimes.length >= 2) {
+        List<double> intervals = [];
+        for (int i = 1; i < tapTimes.length; i++) {
+          intervals.add(
+              tapTimes[i].difference(tapTimes[i - 1]).inMilliseconds / 1000.0);
+        }
+
+        final filtered =
+            intervals.where((i) => i > 0.2 && i < 120).toList();
+
+        if (filtered.isNotEmpty) {
+          avgInterval = filtered.reduce((a, b) => a + b) / filtered.length;
+        } else {
+          avgInterval = 0.0;
+        }
+      }
+    });
+  }
+
+  void reset() {
+    setState(() {
+      tapTimes.clear();
+      avgInterval = 0.0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bubblesPerMin =
+        avgInterval > 0 ? (60 / avgInterval).toStringAsFixed(1) : "--";
+    final lastTap = tapTimes.isNotEmpty ? tapTimes.last : null;
+    final timeSinceLast = lastTap != null
+        ? (DateTime.now().difference(lastTap).inMilliseconds / 1000.0)
+            .toStringAsFixed(1)
+        : "--";
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: recordTap,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(200, 200),
+              shape: const CircleBorder(),
+              backgroundColor: Colors.green,
+            ),
+            child: const Text(
+              "Tap\nBubble",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text("Total Taps: ${tapTimes.length}"),
+          const SizedBox(height: 8),
+          Text("Time Since Last Tap: $timeSinceLast sec"),
+          const SizedBox(height: 8),
+          Text("Avg Interval: ${avgInterval.toStringAsFixed(2)} sec"),
+          const SizedBox(height: 8),
+          Text("Bubbles Per Minute: $bubblesPerMin"),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: reset,
+            icon: const Icon(Icons.refresh),
+            label: const Text("Reset"),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
           ),
         ],
       ),
