@@ -35,6 +35,7 @@ class RecipeBuilderPage extends StatefulWidget {
 
 class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   final TextEditingController nameController = TextEditingController();
+  bool get hasAnyOg => fermentables.any((f) => f.containsKey('og') && f['og'] != null);
   double abv = 0.0;
   List<Map<String, dynamic>> additives = [];
   List<Map<String, dynamic>> fermentables = [];
@@ -42,7 +43,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   List<Map<String, dynamic>> fermentationStages = [];
   List<Tag> tags = [];
   double fg = 1.010;
-  double og = 1.050;
+  double? og;
   bool showAdvanced = false;
 
   @override
@@ -63,9 +64,9 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     calculateStats();
   }
 
-  void calculateStats() {
+    void calculateStats() {
     fg = CiderUtils.estimateFG();
-    abv = CiderUtils.calculateABV(og, fg);
+    abv = CiderUtils.calculateABV(og ?? 1.000, fg);
     setState(() {});
     logger.i('Recalculated stats: OG=$og, FG=$fg, ABV=$abv');
   }
@@ -82,22 +83,26 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   }
 
   void editFermentable(int index) async {
-    final existing = fermentables[index];
+  final existing = fermentables[index];
 
-    await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => AddFermentableDialog(
-        existing: existing,
-        onAddToRecipe: (updated) {
-          setState(() {
-            fermentables[index] = updated;
-          });
-          calculateStats();
-        },
-        onAddToInventory: (_) {},
-      ),
-    );
-  }
+  await showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (_) => AddFermentableDialog(
+      existing: existing,
+      onAddToRecipe: (updated) {
+        setState(() {
+          fermentables[index] = updated;
+          // Update OG if the updated fermentable has a valid OG value
+          if (updated.containsKey('og') && updated['og'] != null) {
+            og = updated['og'];
+          }
+        });
+        calculateStats();
+      },
+      onAddToInventory: (_) {},
+    ),
+  );
+}
 
   void editAdditive(int index) async {
     final existing = additives[index];
@@ -175,7 +180,7 @@ void editYeast() async {
               name: recipeName,
               tags: tags,
               createdAt: DateTime.now(),
-              og: og,
+              og: og ?? 1.000,
               fg: fg,
               abv: abv,
               additives: additives,
@@ -445,22 +450,39 @@ void editYeast() async {
 
           const Divider(thickness: 1.5),
 
-          if (showAdvanced) ...[
-            ListTile(
-              title: const Text("Original Gravity"),
-              subtitle: Text(og.toStringAsFixed(3)),
-            ),
-            ListTile(
-              title: const Text("Final Gravity"),
-              subtitle: Text(fg.toStringAsFixed(3)),
-            ),
-            ListTile(
-              title: const Text("ABV"),
-              subtitle: Text("${abv.toStringAsFixed(2)}%"),
-            ),
-          ],
-        ],
+  if (og != null || showAdvanced) ...[
+    if (og != null)
+      ListTile(
+        title: const Text("Original Gravity"),
+        subtitle: Text(og!.toStringAsFixed(3)),
       ),
-    );
+          const SizedBox(height: 12),
+      // Final Gravity field with ABV recalculation
+        TextFormField(
+          initialValue: fg.toStringAsFixed(3),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: "Final Gravity",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (val) {
+            final parsed = double.tryParse(val);
+            if (parsed != null && parsed >= 0.990 && parsed <= 1.200) {
+              setState(() {
+                fg = parsed;
+                abv = CiderUtils.calculateABV(og ?? 1.000, fg);
+              });
+            }
+          },
+        ),
+      const SizedBox(height: 12),
+      ListTile(
+        title: const Text("ABV"),
+        subtitle: Text("${abv.toStringAsFixed(2)}%"),
+      ),
+    ],
+  ],
+),
+);
   }
 }
