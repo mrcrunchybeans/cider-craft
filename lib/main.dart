@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('CiderCraft',
                       style: TextStyle(color: Colors.white, fontSize: 24)),
                   SizedBox(height: 8),
-                  Text('Brian Petry – Premium',
+                  Text('Brian Petry – Diamond',
                       style: TextStyle(color: Colors.white70)),
                 ],
               ),
