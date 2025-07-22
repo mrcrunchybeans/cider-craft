@@ -183,4 +183,9 @@ class CiderUtils {
   static double calculateFG(double og) {
     return estimateFG();
   }
+
+  static double ppmToGrams(double gallons, int ppm) {
+  return ppm * gallons * 3.78541 / 1000;
+}
+
 }
