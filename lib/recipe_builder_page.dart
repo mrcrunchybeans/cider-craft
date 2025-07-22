@@ -52,6 +52,7 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     if (widget.existingRecipe != null) {
       final recipe = widget.existingRecipe!;
       nameController.text = recipe.name;
+      notesController.text = recipe.notes;
       additives = List<Map<String, dynamic>>.from(recipe.additives);
       fermentables = List<Map<String, dynamic>>.from(recipe.fermentables);
       fermentationStages = List<Map<String, dynamic>>.from(recipe.fermentationStages);
@@ -123,6 +124,9 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
     );
   }
 
+TextEditingController notesController = TextEditingController();
+
+
 void addYeast(Map<String, dynamic> y) {
   setState(() {
     yeast = [y]; // Only one yeast allowed, replace any existing
@@ -187,6 +191,8 @@ void editYeast() async {
               fermentables: fermentables,
               yeast: yeast,
               fermentationStages: fermentationStages,
+              notes: notesController.text.trim(),
+
             );
 
             final box = Hive.box<RecipeModel>('recipes');
@@ -447,6 +453,19 @@ void editYeast() async {
               ),
             );
           }),
+
+          const Divider(thickness: 1.5),
+
+                    TextFormField(
+            controller: notesController,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: "Notes",
+              hintText: "Any extra information, comments, or observations",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 20),
 
           const Divider(thickness: 1.5),
 

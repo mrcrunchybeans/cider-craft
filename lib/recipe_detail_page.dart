@@ -99,7 +99,6 @@ class RecipeDetailPage extends StatelessWidget {
 
           const Divider(),
 
-
           const Text("Yeast", style: TextStyle(fontWeight: FontWeight.bold)),
           ...recipe.yeast.map((y) => ListTile(
             title: Text(y['name']),
@@ -108,18 +107,23 @@ class RecipeDetailPage extends StatelessWidget {
 
           const Divider(),
 
-
           const Text("Fermentation Profile", style: TextStyle(fontWeight: FontWeight.bold)),
-...recipe.fermentationStages.map((stage) => ListTile(
-  title: Text(stage['name']),
-  subtitle: Row(
-    children: [
-      const Icon(Icons.thermostat, size: 18, color: Colors.grey),
-      const SizedBox(width: 4),
-      Text("${stage['days']} days @ ${TempDisplay.format((stage['temp'] as num).toDouble())}"),
-    ],
-  ),
-)),
+          ...recipe.fermentationStages.map((stage) => ListTile(
+            title: Text(stage['name']),
+            subtitle: Row(
+              children: [
+                const Icon(Icons.thermostat, size: 18, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text("${stage['days']} days @ ${TempDisplay.format((stage['temp'] as num).toDouble())}"),
+              ],
+            ),
+          )),
+
+          if (recipe.notes.trim().isNotEmpty) ...[
+            const Divider(),
+            const Text("Notes", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(recipe.notes),
+          ],
         ],
       ),
     );
