@@ -31,7 +31,7 @@ class _AddYeastDialogState extends State<AddYeastDialog> {
   String selectedYeast = 'Lalvin EC-1118';
   final TextEditingController customYeastController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
-  String unit = 'grams';
+  String unit = 'packets';
 
   @override
   void initState() {

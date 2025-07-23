@@ -28,7 +28,7 @@ class _AddFermentableDialogState extends State<AddFermentableDialog> {
   final TextEditingController ogController = TextEditingController();
   final TextEditingController phController = TextEditingController();
 
-  String amountUnit = 'oz';
+  String amountUnit = 'gal';
   String type = 'Juice';
 
   @override

@@ -1,5 +1,7 @@
 
+import 'package:flutter/material.dart';
 
+import '../models/fermentable.dart';
 class CiderUtils {
   /// Acidity classification based on pH
   ///
@@ -96,6 +98,75 @@ class CiderUtils {
   static double calculateABV(double og, double fg) {
     return (og - fg) * 131.25;
   }
+
+
+/// Calculates the weighted average OG from a list of fermentables.
+/// Each fermentable must have a non-null SG and volume.
+static double? calculateWeightedAverageOG(List<Fermentable> fermentables) {
+  double totalLiters = 0.0;
+  double weightedOGSum = 0.0;
+
+  for (final f in fermentables) {
+    if (f.sg == null || f.amount == null || f.unit == null) continue;
+
+    final double volumeLiters = f.amount! * f.unit!.toLiters;
+    totalLiters += volumeLiters;
+    weightedOGSum += f.sg! * volumeLiters;
+  }
+
+  if (totalLiters == 0) return null;
+
+  return weightedOGSum / totalLiters;
+}
+
+
+/// Returns the best OG value to use for ABV calculation based on user preferences.
+///
+/// Priority:
+/// 1. If useAdjustedOG is true → use targetMustSG (if set)
+/// 2. Else → use weightedAverageOG (if available)
+/// 3. Else → use measuredMustSG (if set)
+/// 4. Else → fallback to og (default single OG)
+static double getOriginalGravityForABV({
+  required bool useAdjustedOG,
+  required double? targetMustSG,
+  required double? weightedAverageOG,
+  required double? measuredMustSG,
+  required double? og,
+}) {
+  if (useAdjustedOG && targetMustSG != null) return targetMustSG;
+  if (!useAdjustedOG && weightedAverageOG != null) return weightedAverageOG;
+  if (!useAdjustedOG && measuredMustSG != null) return measuredMustSG;
+  return og ?? 1.000;
+}
+
+/// Returns the OG used for calculation and optionally auto-fills Measured SG
+static double autofillMeasuredSGIfEmpty({
+  required bool useAdjustedOG,
+  required double? targetMustSG,
+  required double? weightedAverageOG,
+  required double? measuredMustSG,
+  required double? og,
+  required TextEditingController measuredMustSGController,
+}) {
+  final ogUsed = getOriginalGravityForABV(
+    useAdjustedOG: useAdjustedOG,
+    targetMustSG: targetMustSG,
+    weightedAverageOG: weightedAverageOG,
+    measuredMustSG: measuredMustSG,
+    og: og,
+  );
+
+  final shouldAutofill =
+      (measuredMustSG == null || measuredMustSGController.text.trim().isEmpty) &&
+      ogUsed != 1.000;
+
+  if (shouldAutofill) {
+    measuredMustSGController.text = ogUsed.toStringAsFixed(3);
+  }
+
+  return ogUsed;
+}
 
   /// Estimate FG assuming full fermentation
   static double estimateFG() {
@@ -198,3 +269,16 @@ static double recommendedFreeSO2ppm(double ph) {
 }
 
 }
+
+enum VolumeUnit {
+  liters("L", 1.0),
+  gallons("gal", 3.78541),
+  ounces("oz", 0.0295735);
+
+  final String label;
+  final double toLiters;
+
+  const VolumeUnit(this.label, this.toLiters);
+}
+
+
