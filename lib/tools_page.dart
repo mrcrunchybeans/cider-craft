@@ -21,12 +21,12 @@ class ToolsPage extends StatelessWidget {
           title: const Text("Cider Tools"),
           bottom: const TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.local_drink), text: "ABV"),
-              Tab(icon: Icon(Icons.thermostat), text: "SG Correction"),
-              Tab(icon: Icon(Icons.science), text: "SO₂ Calculator"),
-              Tab(icon: Icon(Icons.square), text: "Unit Converter"),
+              Tab(icon: Icon(Icons.science), text: "ABV"),
+              Tab(icon: Icon(Icons.trending_up), text: "SG Correction"),
+              Tab(icon: Icon(Icons.biotech), text: "SO₂ Calculator"),
+              Tab(icon: Icon(Icons.compare_arrows), text: "Unit Converter"),
               Tab(icon: Icon(Icons.bubble_chart), text: "Bubble Counter"),
-              Tab(icon: Icon(Icons.circle), text: "Gravity Adjuster"),
+              Tab(icon: Icon(Icons.tune), text: "Gravity Adjuster"),
             ],
           ),
         ),
