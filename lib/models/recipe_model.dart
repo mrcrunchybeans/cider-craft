@@ -37,6 +37,9 @@ class RecipeModel extends HiveObject {
 
   @HiveField(10)
   String notes;
+  
+  @HiveField(11)
+  DateTime? lastOpened;
 
   RecipeModel({
     required this.name,

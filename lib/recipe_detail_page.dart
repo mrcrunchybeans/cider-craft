@@ -7,7 +7,7 @@ import 'models/recipe_model.dart';
 import 'recipe_builder_page.dart';
 import 'recipe_list_page.dart';
 
-class RecipeDetailPage extends StatelessWidget {
+class RecipeDetailPage extends StatefulWidget {
   final RecipeModel recipe;
   final int index;
 
@@ -17,11 +17,24 @@ class RecipeDetailPage extends StatelessWidget {
     required this.index,
   });
 
+  @override
+  State<RecipeDetailPage> createState() => _RecipeDetailPageState();
+}
+
+class _RecipeDetailPageState extends State<RecipeDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+    final box = Hive.box<RecipeModel>('recipes');
+    final updated = widget.recipe..lastOpened = DateTime.now();
+    box.putAt(widget.index, updated);
+  }
+
   void _editRecipe(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => RecipeBuilderPage(
-        existingRecipe: recipe,
-        recipeKey: index,
+        existingRecipe: widget.recipe,
+        recipeKey: widget.index,
       ),
     ));
   }
@@ -29,7 +42,7 @@ class RecipeDetailPage extends StatelessWidget {
   void _cloneRecipe(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => RecipeBuilderPage(
-        existingRecipe: recipe,
+        existingRecipe: widget.recipe,
         isClone: true,
       ),
     ));
@@ -50,15 +63,19 @@ class RecipeDetailPage extends StatelessWidget {
 
     if (confirm == true) {
       final box = Hive.box<RecipeModel>('recipes');
-      await box.deleteAt(index);
+      await box.deleteAt(widget.index);
       if (context.mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const RecipeListPage()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const RecipeListPage()),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final recipe = widget.recipe;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(recipe.name),
@@ -102,7 +119,7 @@ class RecipeDetailPage extends StatelessWidget {
           const Text("Yeast", style: TextStyle(fontWeight: FontWeight.bold)),
           ...recipe.yeast.map((y) => ListTile(
             title: Text(y['name']),
-            subtitle: Text("${y['amount']} ${y['unit']}"),
+            subtitle: Text("${y['amount']} ${y['amount'] == 1 ? 'packet' : y['unit']}"),
           )),
 
           const Divider(),

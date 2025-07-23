@@ -32,14 +32,17 @@ class RecipeModelAdapter extends TypeAdapter<RecipeModel> {
       fermentationStages: (fields[8] as List)
           .map((dynamic e) => (e as Map).cast<String, dynamic>())
           .toList(),
-      yeast: fields[9],
-    );
+      yeast: (fields[9] as List)
+          .map((dynamic e) => (e as Map).cast<String, dynamic>())
+          .toList(),
+      notes: fields[10] as String,
+    )..lastOpened = fields[11] as DateTime?;
   }
 
   @override
   void write(BinaryWriter writer, RecipeModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -57,7 +60,13 @@ class RecipeModelAdapter extends TypeAdapter<RecipeModel> {
       ..writeByte(7)
       ..write(obj.fermentables)
       ..writeByte(8)
-      ..write(obj.fermentationStages);
+      ..write(obj.fermentationStages)
+      ..writeByte(9)
+      ..write(obj.yeast)
+      ..writeByte(10)
+      ..write(obj.notes)
+      ..writeByte(11)
+      ..write(obj.lastOpened);
   }
 
   @override
