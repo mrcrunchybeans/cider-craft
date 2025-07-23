@@ -65,7 +65,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       final box = Hive.box<RecipeModel>('recipes');
       await box.deleteAt(widget.index);
       if (context.mounted) {
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const RecipeListPage()),
         );
       }
