@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/temp_display.dart';
+import '../models/settings_model.dart';
 
 class AddFermentationStageDialog extends StatefulWidget {
   final Map<String, dynamic>? existing;
@@ -19,11 +21,16 @@ class _AddFermentationStageDialogState extends State<AddFermentationStageDialog>
   final TextEditingController nameController = TextEditingController();
   final TextEditingController tempController = TextEditingController();
   final TextEditingController daysController = TextEditingController();
-  String tempUnit = TempDisplay.isF ? '°F' : '°C';
+
+  late String tempUnit;
 
   @override
   void initState() {
     super.initState();
+
+    final useCelsius = Provider.of<SettingsModel>(context, listen: false).useCelsius;
+    tempUnit = useCelsius ? '°C' : '°F';
+
     if (widget.existing != null) {
       final e = widget.existing!;
       nameController.text = e['name'] ?? '';
@@ -31,6 +38,9 @@ class _AddFermentationStageDialogState extends State<AddFermentationStageDialog>
       double displayTemp = tempUnit == '°F' ? (tempC * 9 / 5) + 32 : tempC;
       tempController.text = displayTemp.toStringAsFixed(1);
       daysController.text = e['days']?.toString() ?? '';
+    } else {
+      // Default temperature based on unit
+      tempController.text = tempUnit == '°F' ? '68.0' : '20.0';
     }
   }
 

@@ -114,7 +114,7 @@ class RecipeDetailPage extends StatelessWidget {
               children: [
                 const Icon(Icons.thermostat, size: 18, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text("${stage['days']} days @ ${TempDisplay.format((stage['temp'] as num).toDouble())}"),
+                Text("${stage['days']} ${stage['days'] == 1 ? 'day' : 'days'} @ ${TempDisplay.format((stage['temp'] as num).toDouble())}"),
               ],
             ),
           )),

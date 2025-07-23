@@ -723,7 +723,7 @@ void editYeast() async {
             final stage = entry.value;
             return ListTile(
               title: Text(stage['name']),
-              subtitle: Text("${stage['days']} days @ ${TempDisplay.format(stage['temp'])}"),
+              subtitle: Text("${stage['days']} ${stage['days'] == 1 ? 'day' : 'days'} @ ${TempDisplay.format(stage['temp'])}"),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
