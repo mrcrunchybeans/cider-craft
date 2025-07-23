@@ -3,6 +3,9 @@ import '../utils/utils.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_application_1/utils/sugar_gravity_data.dart';
+
+
 
 
 
@@ -34,7 +37,7 @@ class ToolsPage extends StatelessWidget {
             SulfiteToolTab(),
             UnitConverterTab(),
             BubbleCounterTab(),
-            GravityAdjustmentTab()
+            GravityAdjustTool(), 
           ],
         ),
       ),
@@ -832,165 +835,261 @@ class _BubbleCounterTabState extends State<BubbleCounterTab> {
 }
 
 // ############### Start of Gravity Adjustment Tab ###############
-class GravityAdjuster {
-  // Yield values for common sugars (points per pound per gallon)
-  static const Map<String, double> sugarPPG = {
-    'Table Sugar': 46,
-    'Corn Sugar (Dextrose)': 42,
-    'Honey': 35,
-    'Maple Syrup': 30,
-    'Juice Concentrate': 30, // Approximate, varies by brand
-  };
 
-  /// Returns grams of sugar needed to reach target gravity
-  ///
-  /// [currentOG] and [targetOG] should be in SG format (e.g. 1.050)
-  /// [volume] in gallons or liters (set isGallons accordingly)
-  /// [sugarType] must match a key from sugarPPG
-  static double calculateSugarToAdd({
-    required double currentOG,
-    required double targetOG,
-    required double volume,
-    required String sugarType,
-    bool isGallons = true,
-  }) {
-    if (!sugarPPG.containsKey(sugarType)) {
-      throw ArgumentError("Unknown sugar type: $sugarType");
+
+class GravityAdjustTool extends StatefulWidget {
+  const GravityAdjustTool({super.key});
+
+  @override
+  State<GravityAdjustTool> createState() => _GravityAdjustToolState();
+}
+
+class _GravityAdjustToolState extends State<GravityAdjustTool> {
+  final _volumeController = TextEditingController();
+  final _currentSGController = TextEditingController();
+  final _targetSGController = TextEditingController();
+
+  String _result = '';
+  String _formulaHelp = '';
+  String _selectedSugar = 'Table Sugar (sucrose)';
+  bool _useGallons = true;
+
+  String formatGallonsToGalCupOz(double gallons) {
+  final int wholeGallons = gallons.floor();
+  final double remainingGallons = gallons - wholeGallons;
+
+  final int totalOz = (remainingGallons * 128).round();
+  final int cups = totalOz ~/ 8;
+  final int flOz = totalOz % 8;
+
+  List<String> parts = [];
+
+  if (wholeGallons > 0) parts.add("$wholeGallons gal");
+  if (cups > 0) parts.add("$cups cup${cups > 1 ? 's' : ''}");
+  if (flOz > 0) parts.add("$flOz fl oz");
+
+  return parts.isNotEmpty ? parts.join(', ') : "0 fl oz";
+}
+
+void _showSugarInfoDialog(BuildContext context) {
+  final sugarMap = SugarGravityData.ppgMap;
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Sugar Sources and PPG"),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          shrinkWrap: true,
+          children: sugarMap.entries.map((entry) {
+            return ListTile(
+              dense: true,
+              title: Text(entry.key),
+              trailing: Text("PPG: ${entry.value.toStringAsFixed(0)}"),
+            );
+          }).toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text("Close"),
+        ),
+      ],
+    ),
+  );
+}
+
+
+  void _calculate() {
+    final double? volumeInput = double.tryParse(_volumeController.text);
+    final double? currentSG = double.tryParse(_currentSGController.text);
+    final double? targetSG = double.tryParse(_targetSGController.text);
+
+    if (volumeInput == null || currentSG == null || targetSG == null) {
+      setState(() {
+        _result = 'Please enter valid numbers.';
+        _formulaHelp = '';
+      });
+      return;
     }
 
-    final deltaPoints = (targetOG - currentOG) * 1000;
-    if (deltaPoints <= 0) return 0;
+    final double volumeGallons = _useGallons ? volumeInput : volumeInput / 3.78541;
+    final double deltaSG = targetSG - currentSG;
+    final double deltaPoints = deltaSG * 1000;
+    final double? ppg = SugarGravityData.ppgMap[_selectedSugar];
 
-    final volGallons = isGallons ? volume : volume * 0.264172;
-    final ppg = sugarPPG[sugarType]!;
-    final poundsNeeded = (deltaPoints * volGallons) / ppg;
-    final gramsNeeded = poundsNeeded * 453.592;
+    if (ppg == null) {
+      setState(() {
+        _result = 'Unknown sugar type selected.';
+        _formulaHelp = '';
+      });
+      return;
+    }
 
-    return gramsNeeded;
-  }
-}
+    if (deltaSG == 0) {
+      setState(() {
+        _result = 'No adjustment needed. Target and current SG are equal.';
+        _formulaHelp = '';
+      });
+      return;
+    }
 
-class GravityAdjustmentTab extends StatefulWidget {
-  const GravityAdjustmentTab({super.key});
+    if (deltaSG > 0) {
+      // Sugar addition
+      final poundsNeeded = (deltaPoints * volumeGallons) / ppg;
+      final gramsNeeded = poundsNeeded * 453.592;
+      final newSG = currentSG + deltaSG;
 
-  @override
-  State<GravityAdjustmentTab> createState() => _GravityAdjustmentTabState();
-}
+      setState(() {
+        _result =
+            'Add ~${gramsNeeded.toStringAsFixed(1)}g of $_selectedSugar to reach ${newSG.toStringAsFixed(3)} SG.';
+        _formulaHelp =
+            'Sugar Addition Formula:\n'
+            'Δ points = (${targetSG.toStringAsFixed(3)} - ${currentSG.toStringAsFixed(3)}) × 1000 = ${deltaPoints.toStringAsFixed(1)} pts\n'
+            'Pounds = (Δ pts × Volume) / PPG\n'
+            'Grams = Pounds × 453.592';
+      });
+    } else {
+      // Dilution
+      final dilutionRatio = targetSG / currentSG;
+      final totalVolume = volumeGallons / dilutionRatio;
+      final waterToAddGallons = totalVolume - volumeGallons;
+      final waterToAdd = _useGallons
+          ? waterToAddGallons
+          : waterToAddGallons * 3.78541;
 
-class _GravityAdjustmentTabState extends State<GravityAdjustmentTab> {
-  double currentSG = 1.050;
-  double targetSG = 1.065;
-  double volume = 5.0;
-  bool useGallons = true;
-  String sugarType = 'Table Sugar';
+      setState(() {
+        _result = _useGallons
+    ? 'Dilute by adding ~${formatGallonsToGalCupOz(waterToAddGallons)} of water.'
+    : 'Dilute by adding ~${waterToAdd.toStringAsFixed(1)} liters of water.';
 
-  final sgController = TextEditingController();
-  final targetController = TextEditingController();
-  final volumeController = TextEditingController();
-
-  final Map<String, double> sugarPPG = {
-    'Table Sugar (Sucrose)': 46,
-    'Corn Sugar (Dextrose)': 42,
-    'Honey': 35,
-    'DME (Dry Malt Extract)': 44,
-    'LME (Liquid Malt Extract)': 36,
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    sgController.text = currentSG.toStringAsFixed(3);
-    targetController.text = targetSG.toStringAsFixed(3);
-    volumeController.text = volume.toStringAsFixed(1);
-  }
-
-  double calculateSugarToAdd() {
-    final ppg = sugarPPG[sugarType]!;
-    final gallons = useGallons ? volume : volume / 3.78541;
-    final pointsNeeded = (targetSG - currentSG) * 1000;
-    return (pointsNeeded * gallons) / ppg;
+        _formulaHelp =
+            'Dilution Formula:\n'
+            'Target SG = (Current SG × Volume) / (Volume + Water)\n'
+            'Rearranged → Water = Volume × ((Current SG / Target SG) - 1)';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final sugarAmount = calculateSugarToAdd();
-
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
-        const Text("Gravity Adjustment Calculator", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Gravity Adjustment Tool",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _volumeController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Batch Volume',
+                    border: OutlineInputBorder(),
+                  ),
+                                onChanged: (_) => _calculate(),
 
-        // Current SG
-        TextField(
-          controller: sgController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: "Current SG"),
-          onChanged: (val) {
-            final parsed = double.tryParse(val);
-            if (parsed != null) setState(() => currentSG = parsed);
-          },
-        ),
+                ),
+                
+              ),
+              const SizedBox(width: 12),
+             DropdownButton<bool>(
+  value: _useGallons,
+  onChanged: (val) {
+    if (val == null) return;
+    final currentVolume = double.tryParse(_volumeController.text);
+    if (currentVolume != null) {
+      final converted = val
+          ? currentVolume / 3.78541 // L → gal
+          : currentVolume * 3.78541; // gal → L
+      _volumeController.text = converted.toStringAsFixed(2);
+    }
+    setState(() => _useGallons = val);
+  },
+  items: const [
+    DropdownMenuItem(value: true, child: Text("Gallons")),
+    DropdownMenuItem(value: false, child: Text("Liters")),
+  ],
+),
+            ]
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _currentSGController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Current SG',
+              border: OutlineInputBorder(),
+            ),
+                          onChanged: (_) => _calculate(),
 
-        const SizedBox(height: 12),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _targetSGController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Target SG',
+              border: OutlineInputBorder(),
+            ),
+              onChanged: (_) => _calculate(),
 
-        // Target SG
-        TextField(
-          controller: targetController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: "Target SG"),
-          onChanged: (val) {
-            final parsed = double.tryParse(val);
-            if (parsed != null) setState(() => targetSG = parsed);
-          },
-        ),
+          ),
+          Row(
+  children: [
+    Expanded(
+      child: DropdownButton<String>(
+        value: _selectedSugar,
+        isExpanded: true,
+        items: SugarGravityData.ppgMap.keys.map((type) {
+          return DropdownMenuItem<String>(
+            value: type,
+            child: Text(type),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            setState(() {
+              _selectedSugar = value;
+            });
+            _calculate();
+          }
+        },
+      ),
+    ),
+    IconButton(
+      icon: const Icon(Icons.info_outline),
+      tooltip: "Sugar PPG Info",
+      onPressed: () => _showSugarInfoDialog(context),
+    ),
+  ],
+),
 
-        const SizedBox(height: 12),
-
-        // Volume
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: volumeController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: "Batch Volume"),
-                onChanged: (val) {
-                  final parsed = double.tryParse(val);
-                  if (parsed != null) setState(() => volume = parsed);
-                },
+          Text(
+            _result,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (_formulaHelp.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _formulaHelp,
+                style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
               ),
             ),
-            const SizedBox(width: 12),
-            DropdownButton<bool>(
-              value: useGallons,
-              onChanged: (val) => setState(() => useGallons = val!),
-              items: const [
-                DropdownMenuItem(value: true, child: Text("Gallons")),
-                DropdownMenuItem(value: false, child: Text("Liters")),
-              ],
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        // Sugar Type
-        DropdownButton<String>(
-          value: sugarType,
-          isExpanded: true,
-          onChanged: (val) => setState(() => sugarType = val!),
-          items: sugarPPG.keys
-              .map((sugar) => DropdownMenuItem(value: sugar, child: Text(sugar)))
-              .toList(),
-        ),
-
-        const SizedBox(height: 24),
-        Text(
-          "Add ${sugarAmount.toStringAsFixed(2)} oz of $sugarType",
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
