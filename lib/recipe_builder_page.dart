@@ -15,6 +15,8 @@ import 'package:provider/provider.dart';
 import 'widgets/tag_picker_dialog.dart';
 import 'package:flutter_application_1/models/tag_manager.dart';
 import 'widgets/add_yeast_dialog.dart';
+import 'dart:async';
+
 
 
 
@@ -43,8 +45,12 @@ class RecipeBuilderPage extends StatefulWidget {
 
 
 class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
+  Timer? sgToAbvDebounce;
+  bool userOverrodeAbv = false;
+  bool userOverrodeTargetSG = false;
   final TextEditingController measuredMustSGController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController targetMustSGController = TextEditingController();
   bool get hasAnyOg => fermentables.any((f) => f.containsKey('og') && f['og'] != null);
   double abv = 0.0;
   List<Map<String, dynamic>> additives = [];
@@ -72,6 +78,11 @@ class _RecipeBuilderPageState extends State<RecipeBuilderPage> {
   AbvSource selectedAbvSource = AbvSource.measured;
   bool useAdjustedOG = false;
   double? weightedAverageOG;
+  final TextEditingController desiredAbvController = TextEditingController();
+  double? desiredAbv;
+  
+
+
 
 
 Widget _buildCalculatedABVSection() {
@@ -110,7 +121,6 @@ void updateMeasuredMustSGFromWeighted() {
     measuredMustSGController.text = weightedAverageOG!.toStringAsFixed(3);
   }
 }
-
 
 
 
@@ -215,6 +225,31 @@ void _calculateSugarNeeded() {
  @override
 void initState() {
   super.initState();
+     desiredAbvController.addListener(() {
+  final input = desiredAbvController.text;
+  final parsed = double.tryParse(input);
+
+  if (parsed != null && parsed > 0 && parsed < 25) {
+    setState(() {
+      userOverrodeAbv = true;
+      userOverrodeTargetSG = false;
+
+      desiredAbv = parsed;
+      final requiredOG = (desiredAbv! / 131.25) + fg;
+      final formattedOG = double.parse(requiredOG.toStringAsFixed(3));
+
+      targetMustSG = formattedOG;
+      targetMustSGController.text = formattedOG.toStringAsFixed(3);
+      _calculateSugarNeeded();
+      if (useAdjustedOG) calculateStats();
+    });
+  }
+});
+
+  // Optional: keep targetMustSGController synced if targetMustSG changes elsewhere
+  if (targetMustSG != null) {
+    targetMustSGController.text = targetMustSG!.toStringAsFixed(3);
+  }
   measuredMustSGController.addListener(() {
   final input = measuredMustSGController.text;
   final parsed = double.tryParse(input);
@@ -265,6 +300,14 @@ void calculateStats() {
     final amountValue = double.tryParse(amount.toString()) ?? 0;
     double amountInGallons;
 
+    abv = calculateAbv(originalGravity, fg);
+
+    if (!userOverrodeAbv) {
+      desiredAbv = abv;
+      desiredAbvController.text = abv.toStringAsFixed(2);
+    }
+
+
     switch (unit.toString().toLowerCase()) {
       case 'oz':
       case 'ounces':
@@ -314,7 +357,18 @@ void calculateStats() {
   abv = calculateAbv(originalGravity, fg);
 
   logger.d("Stats calculated - OG: $originalGravity, FG: $fg, ABV: $abv, Weighted OG: $weightedAverageOG, Total Volume: $totalVolumeGallons gal");
+
+abv = calculateAbv(originalGravity, fg);
+
+// Update desired ABV unless overridden
+if (!userOverrodeAbv) {
+  desiredAbv = abv;
+  desiredAbvController.text = abv.toStringAsFixed(2);
 }
+
+
+}
+
 
 // ########### End of CalculateStats ###########
 
@@ -903,26 +957,57 @@ const SizedBox(height: 12),
 
     const SizedBox(height: 12),
 
-    TextFormField(
-      decoration: const InputDecoration(
-        labelText: "Target Initial SG",
-        hintText: "e.g. 1.065",
-        border: OutlineInputBorder(),
-      ),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onChanged: (val) {
-        setState(() {
-          targetMustSG = double.tryParse(val);
-          _calculateSugarNeeded();
-          if (selectedAbvSource == AbvSource.adjusted) {
-            calculateStats(); // Only recalculate if we're using adjusted OG
-            _updateMeasuredMustSGIfNotOverridden();
+        TextFormField(
+  controller: targetMustSGController,
+  decoration: const InputDecoration(
+    labelText: "Target Initial SG",
+    hintText: "e.g. 1.065",
+    border: OutlineInputBorder(),
+  ),
+  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+  onChanged: (val) {
+  final parsed = double.tryParse(val);
+  if (parsed != null) {
+    setState(() {
+      userOverrodeTargetSG = true;
+      userOverrodeAbv = false;
+      targetMustSG = parsed;
+      _calculateSugarNeeded();
+    });
 
-        }
-  });
+    // debounce ABV update
+    sgToAbvDebounce?.cancel();
+    sgToAbvDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!userOverrodeAbv && mounted) {
+        final calculatedAbv = (parsed - fg) * 131.25;
+        setState(() {
+          desiredAbv = calculatedAbv;
+          desiredAbvController.text = calculatedAbv.toStringAsFixed(2);
+        });
+      }
+    });
+
+    if (useAdjustedOG) calculateStats();
+  }
 },
 
-    ),
+),
+
+
+
+const SizedBox(height: 12),
+
+TextFormField(
+  controller: desiredAbvController,
+  decoration: const InputDecoration(
+    labelText: "Desired ABV (%)",
+    hintText: "e.g. 6.5",
+    border: OutlineInputBorder(),
+  ),
+  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+),
+
+
     const SizedBox(height: 12),
 
    
