@@ -64,6 +64,8 @@ class _ABVCalculatorTabState extends State<ABVCalculatorTab> {
     super.initState();
     ogController.text = og.toStringAsFixed(3);
     fgController.text = fg.toStringAsFixed(3);
+
+    
   }
 
   @override
@@ -1056,6 +1058,11 @@ class _GravityAdjustToolState extends State<GravityAdjustTool> {
   final _volumeController = TextEditingController();
   final _currentSGController = TextEditingController();
   final _targetSGController = TextEditingController();
+  final _abvController = TextEditingController();
+  bool userOverrodeAbv = false;
+  Timer? abvDebounce;
+  Timer? sgDebounce;
+
 
   String _result = '';
   String _formulaHelp = '';
@@ -1077,6 +1084,28 @@ class _GravityAdjustToolState extends State<GravityAdjustTool> {
   if (flOz > 0) parts.add("$flOz fl oz");
 
   return parts.isNotEmpty ? parts.join(', ') : "0 fl oz";
+}
+@override
+void initState() {
+  super.initState();
+
+  _abvController.addListener(() {
+    final val = double.tryParse(_abvController.text);
+    final fg = double.tryParse(_currentSGController.text) ?? 1.000;
+
+    if (val != null && val > 0 && val < 25) {
+      userOverrodeAbv = true;
+
+      sgDebounce?.cancel();
+      sgDebounce = Timer(const Duration(milliseconds: 500), () {
+        final requiredOG = (val / 131.25) + fg;
+        final formattedOG = double.parse(requiredOG.toStringAsFixed(3));
+
+        _targetSGController.text = formattedOG.toStringAsFixed(3);
+        _calculate();
+      });
+    }
+  });
 }
 
 void _showSugarInfoDialog(BuildContext context) {
@@ -1179,6 +1208,16 @@ void _showSugarInfoDialog(BuildContext context) {
             'Rearranged → Water = Volume × ((Current SG / Target SG) - 1)';
       });
     }
+    // Calculate ABV if not overridden
+if (!userOverrodeAbv) {
+  final og = double.tryParse(_targetSGController.text);
+  final fg = double.tryParse(_currentSGController.text);
+  if (og != null && fg != null && og > fg) {
+    final abv = (og - fg) * 131.25;
+    _abvController.text = abv.toStringAsFixed(2);
+  }
+}
+
   }
 
   @override
@@ -1249,6 +1288,20 @@ void _showSugarInfoDialog(BuildContext context) {
               onChanged: (_) => _calculate(),
 
           ),
+          const SizedBox(height: 12),
+TextField(
+  controller: _abvController,
+  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+  decoration: const InputDecoration(
+    labelText: 'Desired ABV (%)',
+    border: OutlineInputBorder(),
+  ),
+  onChanged: (_) {
+    userOverrodeAbv = true;
+    // debounce already handled in initState listener
+  },
+),
+
           Row(
   children: [
     Expanded(
