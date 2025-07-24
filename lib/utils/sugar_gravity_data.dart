@@ -7,8 +7,10 @@ class SugarType {
 
 final List<SugarType> sugarTypes = [
   SugarType("Table Sugar (sucrose)", 0.00046),
+  SugarType("Corn Sugar (dextrose)", 0.00042),
   SugarType("Honey", 0.00035),
-  SugarType("Apple Juice Concentrate", 0.00030),
+  SugarType("Maple Syrup", 0.00030),
+  SugarType("Apple Juice Concentrate", 0.00036),
 ];
 
 class SugarGravityData {
