@@ -487,7 +487,7 @@ class UnitConverterTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: const [
           TabBar(
@@ -495,6 +495,7 @@ class UnitConverterTab extends StatelessWidget {
               Tab(text: "Volume"),
               Tab(text: "Mass"),
               Tab(text: "Temperature"),
+              Tab(text: "Gravity"),
             ],
           ),
           Expanded(
@@ -503,6 +504,7 @@ class UnitConverterTab extends StatelessWidget {
                 UnitConverterCategoryTab(category: 'Volume'),
                 UnitConverterCategoryTab(category: 'Mass'),
                 UnitConverterCategoryTab(category: 'Temperature'),
+                UnitConverterCategoryTab(category: 'Gravity'),
               ],
             ),
           ),
@@ -549,6 +551,9 @@ class _UnitConverterCategoryTabState extends State<UnitConverterCategoryTab> {
 
   final List<String> tempUnits = ['°C', '°F', 'K'];
 
+  final List<String> gravityUnits = ['SG', 'SGP', '°Brix', '°Plato'];
+
+
   @override
   void initState() {
     super.initState();
@@ -565,23 +570,45 @@ class _UnitConverterCategoryTabState extends State<UnitConverterCategoryTab> {
         fromUnit = '°C';
         toUnit = '°F';
         break;
+      case 'Gravity':
+        fromUnit = 'SG';
+        toUnit = '°Brix';
+        break;
     }
   }
 
   List<String> getUnits() {
     if (widget.category == 'Volume') return volumeUnits.keys.toList();
     if (widget.category == 'Mass') return massUnits.keys.toList();
+    if (widget.category == 'Gravity') return gravityUnits.toList();
+
     return tempUnits;
   }
 
   double convert() {
-    if (widget.category == 'Temperature') {
+  switch (widget.category) {
+    case 'Temperature':
       return _convertTemp(inputValue, fromUnit, toUnit);
-    }
-    final units = widget.category == 'Volume' ? volumeUnits : massUnits;
-    double baseValue = inputValue * units[fromUnit]!;
-    return baseValue / units[toUnit]!;
+    case 'Gravity':
+      return convertGravity(inputValue, fromUnit, toUnit);
+    case 'Volume':
+      return _convertWithMap(volumeUnits);
+    case 'Mass':
+      return _convertWithMap(massUnits);
+    default:
+      return 0;
   }
+}
+
+double _convertWithMap(Map<String, double> units) {
+  final fromFactor = units[fromUnit];
+  final toFactor = units[toUnit];
+
+  if (fromFactor == null || toFactor == null) return 0;
+  return (inputValue * fromFactor) / toFactor;
+}
+
+
 
   double _convertTemp(double val, String from, String to) {
     if (from == to) return val;
@@ -591,22 +618,144 @@ class _UnitConverterCategoryTabState extends State<UnitConverterCategoryTab> {
     return val;
   }
 
-String getFormulaHint() {
-  if (widget.category == 'Temperature') {
-    return "Uses standard temperature conversion formulas.";
+double convertGravity(double val, String from, String to) {
+  double sg = val;
+
+  // Step 1: Convert everything to SG
+  switch (from) {
+    case 'SG':
+      sg = val;
+      break;
+    case 'SGP':
+      sg = 1.000 + (val / 1000); // 50 -> 1.050
+      break;
+    case '°Brix':
+      sg = (val / (258.6 - ((val / 258.2) * 227.1))) + 1.0;
+      break;
+    case '°Plato':
+      sg = 1 + val / (258.6 - ((val / 258.2) * 227.1)); // Similar to Brix
+      break;
   }
 
-  final Map<String, double> unitMap =
-      widget.category == 'Mass' ? massUnits : volumeUnits;
+  // Step 2: Convert SG to target
+  switch (to) {
+    case 'SG':
+      return sg;
+    case 'SGP':
+      return (sg - 1.0) * 1000;
+    case '°Brix':
+    case '°Plato':
+      return ((182.4601 * sg - 775.6821) * sg + 1262.7794) * (sg - 1.0);
+  }
 
-  final fromFactor = unitMap[fromUnit]!;
-  final toFactor = unitMap[toUnit]!;
-
-  final multiplier = fromFactor / toFactor;
-  return "1 $fromUnit = ${multiplier.toStringAsFixed(3)} $toUnit";
+  return val;
 }
 
+// ######## Start Converter Help Text ########
+
+String normalizeUnit(String unit) {
+  final u = unit.trim().toLowerCase();
+  if (u.contains('specific gravity') || u == 'sg') return 'SG';
+  if (u.contains('sgp') || u.contains('points')) return 'SGP';
+  if (u.contains('brix')) return 'Brix';
+  if (u.contains('plato') || u.contains('°p')) return 'Plato';
+  return unit;
+}
+String getFormulaHint() {
+  if (widget.category == 'Temperature') {
+    return "Temperature Conversion:\n"
+        "°F ↔ °C: (°F - 32) × 5/9 = °C\n"
+        "°C ↔ K: °C + 273.15 = K";
+  }
+
+  if (widget.category == 'Mass' || widget.category == 'Volume') {
+    final Map<String, double> unitMap =
+        widget.category == 'Mass' ? massUnits : volumeUnits;
+
+    final fromFactor = unitMap[fromUnit];
+    final toFactor = unitMap[toUnit];
+
+    if (fromFactor == null || toFactor == null) {
+      return "Conversion formula unavailable.";
+    }
+
+    final multiplier = fromFactor / toFactor;
+    return "1 $fromUnit = ${multiplier.toStringAsFixed(3)} $toUnit";
+  }
+
+  if (widget.category == 'Gravity') {
+    final from = normalizeUnit(fromUnit);
+    final to = normalizeUnit(toUnit);
+
+    if (from == 'SG' && to == 'Brix') {
+      return "SG → Brix:\n"
+          "Brix = (182.4601 × SG³) - (775.6821 × SG²) + (1262.7794 × SG) - 669.5622";
+    }
+    if (from == 'Brix' && to == 'SG') {
+      return "Brix → SG:\n"
+          "SG ≈ 1 + (Brix / (258.6 - (Brix / 258.2 × 227.1)))";
+    }
+
+    if (from == 'SG' && to == 'Plato') {
+      return "SG → Plato:\n"
+          "°P = -616.868 + 1111.14×SG - 630.272×SG² + 135.997×SG³";
+    }
+    if (from == 'Plato' && to == 'SG') {
+      return "Plato → SG:\n"
+          "SG ≈ 1 + (°P / (258.6 - (°P / 258.2 × 227.1)))";
+    }
+
+    if (from == 'SG' && to == 'SGP') {
+      return "SG → SGP:\n"
+          "SGP = (SG - 1.000) × 1000";
+    }
+    if (from == 'SGP' && to == 'SG') {
+      return "SGP → SG:\n"
+          "SG = (SGP / 1000) + 1.000";
+    }
+
+    if ((from == 'Brix' && to == 'Plato') || (from == 'Plato' && to == 'Brix')) {
+      return "Brix ↔ Plato:\n"
+          "Brix and Plato are functionally equivalent in brewing.\n"
+          "Use interchangeably unless precise distinction is needed.";
+    }
+
+    if (from == 'Brix' && to == 'SGP') {
+      return "Brix → SGP:\n"
+          "SG = 1 + (Brix / (258.6 - (Brix / 258.2 × 227.1)))\n"
+          "SGP = (SG - 1.000) × 1000";
+    }
+    if (from == 'SGP' && to == 'Brix') {
+      return "SGP → Brix:\n"
+          "SG = (SGP / 1000) + 1.000\n"
+          "Brix = (182.4601 × SG³) - (775.6821 × SG²) + (1262.7794 × SG) - 669.5622";
+    }
+
+    if (from == 'Plato' && to == 'SGP') {
+      return "Plato → SGP:\n"
+          "SG = 1 + (Plato / (258.6 - (Plato / 258.2 × 227.1)))\n"
+          "SGP = (SG - 1.000) × 1000";
+    }
+    if (from == 'SGP' && to == 'Plato') {
+      return "SGP → Plato:\n"
+          "SG = (SGP / 1000) + 1.000\n"
+          "°P = -616.868 + 1111.14×SG - 630.272×SG² + 135.997×SG³";
+    }
+
+    return "Unrecognized gravity unit combination: $fromUnit → $toUnit";
+  }
+
+  return "No conversion formula available.";
+}
+
+// ######## End Converter Help Text ########
+
+
+
 String formatNumber(double value) {
+    if (widget.category == 'Gravity') {
+    return value.toStringAsFixed(4);
+  }
   if (value >= 10000 || value < 0.001) {
     return value.toStringAsExponential(3); // e.g. 1.234e+5
   } else {
