@@ -65,30 +65,34 @@ class CiderUtils {
     return 'Very High (Crabapples, exceptional)';
   }
 
-  /// Correct SG based on temperature (Hydrometer calibrated at 60°F)
-  static double correctedSG(double measuredSG, double tempF) {
-    double correction = 0.0;
-    if (tempF < 43) {
-      correction = -0.001;
-    } else if (tempF < 50) {
-      correction = -0.0007;
-    } else if (tempF < 53) {
-      correction = -0.0005;
-    } else if (tempF < 60) {
-      correction = -0.0002;
-    } else if (tempF == 60) {
-      correction = 0;
-    } else if (tempF <= 65) {
-      correction = 0.0005;
-    } else if (tempF <= 70) {
-      correction = 0.001;
-    } else if (tempF <= 77) {
-      correction = 0.002;
-    } else {
-      correction = 0.003;
-    }
-    return measuredSG + correction;
+   static double correctedSgJolicoeur(double measuredSG, double tempF) {
+    final Map<int, double> tempCorrections = {
+      32: -0.002,
+      40: -0.0015,
+      50: -0.001,
+      60: 0.0,
+      70: 0.001,
+      80: 0.002,
+      90: 0.003,
+      100: 0.004,
+    };
+
+    if (tempF <= 32) return measuredSG - tempCorrections[32]!;
+    if (tempF >= 100) return measuredSG - tempCorrections[100]!;
+
+    int lower = tempCorrections.keys.lastWhere((t) => t <= tempF);
+    int upper = tempCorrections.keys.firstWhere((t) => t >= tempF);
+
+    double lowerCorrection = tempCorrections[lower]!;
+    double upperCorrection = tempCorrections[upper]!;
+
+    double fraction = (tempF - lower) / (upper - lower);
+    double interpolatedCorrection =
+        lowerCorrection + fraction * (upperCorrection - lowerCorrection);
+
+    return measuredSG - interpolatedCorrection;
   }
+
 
   /// Calculate ABV from OG and FG
   static double calculateABV(double og, double fg) {
@@ -183,4 +187,9 @@ class CiderUtils {
   static double calculateFG(double og) {
     return estimateFG();
   }
+}
+
+double correctedSGForTemp(double measuredSG, double tempF) {
+  final correction = (1.313454 - 0.132674 * tempF + 0.002057793 * tempF * tempF - 0.000002627634 * tempF * tempF * tempF);
+  return measuredSG + (correction * 0.001);
 }

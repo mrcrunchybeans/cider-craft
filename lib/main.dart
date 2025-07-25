@@ -15,6 +15,7 @@ import 'models/tag.dart';
 
 
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
@@ -26,6 +27,8 @@ void main() async {
   final recipeBox = await Hive.openBox<RecipeModel>('recipes');
   await Hive.openBox('settings');
   await Hive.openBox<Tag>('tags');
+
+
 
 
 
@@ -73,7 +76,6 @@ class HomeScreen extends StatefulWidget {
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
-
 }
 
 class _HomeScreenState extends State<HomeScreen> {

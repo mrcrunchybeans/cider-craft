@@ -69,30 +69,32 @@ class CiderUtils {
     return 'Very High (Crabapples, exceptional)';
   }
 
-  /// Correct SG based on temperature (Hydrometer calibrated at 60°F)
-  static double correctedSG(double measuredSG, double tempF) {
-    double correction = 0.0;
-    if (tempF < 43) {
-      correction = -0.001;
-    } else if (tempF < 50) {
-      correction = -0.0007;
-    } else if (tempF < 53) {
-      correction = -0.0005;
-    } else if (tempF < 60) {
-      correction = -0.0002;
-    } else if (tempF == 60) {
-      correction = 0;
-    } else if (tempF <= 65) {
-      correction = 0.0005;
-    } else if (tempF <= 70) {
-      correction = 0.001;
-    } else if (tempF <= 77) {
-      correction = 0.002;
-    } else {
-      correction = 0.003;
-    }
-    return measuredSG + correction;
+  /// More accurate ABV formula based on density changes
+  /// [(76.08 × (OG - FG)) / (1.775 - OG)] × (FG / 0.794)
+  static double calculateABVBetter(double og, double fg) {
+    if (og <= fg || og < 0.9 || fg < 0.9) return 0.0;
+
+    return ((76.08 * (og - fg)) / (1.775 - og)) * (fg / 0.794);
   }
+
+  /// Correct SG based on temperature using polynomial formula (calibrated at 60°F)
+static double correctedSG(double measuredSG, double tempF) {
+  const double calibrationTempF = 60.0;
+
+  final double correction = 1.313454
+      - 0.132674 * tempF
+      + 0.002057793 * (tempF * tempF)
+      - 0.000002627634 * (tempF * tempF * tempF);
+
+  final double baseCorrection = 1.313454
+      - 0.132674 * calibrationTempF
+      + 0.002057793 * (calibrationTempF * calibrationTempF)
+      - 0.000002627634 * (calibrationTempF * calibrationTempF * calibrationTempF);
+
+  final double correctionFactor = correction - baseCorrection;
+  return measuredSG + (correctionFactor / 1000.0); // apply correction in SG units
+}
+
 
   /// Calculate ABV from OG and FG
   static double calculateABV(double og, double fg) {
