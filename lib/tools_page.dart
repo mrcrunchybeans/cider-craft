@@ -6,6 +6,7 @@ import 'gravity_adjuster_page.dart';
 import 'sg_correction_page.dart';
 import 'so2_calculator_page.dart';
 import 'unit_converter_page.dart';
+import 'acid_tools/acid_tools_page.dart';
 
 class ToolsPage extends StatelessWidget {
   const ToolsPage({super.key});
@@ -19,14 +20,15 @@ class ToolsPage extends StatelessWidget {
       ToolData("FSU Calculator", Icons.bubble_chart, const FSUCalculatorTab()),
       ToolData("Gravity Adjuster", Icons.scale, const GravityAdjustTool()),
       ToolData("Bubble Counter", Icons.av_timer, const BubbleCounterTab()),
-ToolData(
-  "Unit Converter",
-  Icons.swap_horiz,
-  const DefaultTabController(
-    length: 4,
-    child: UnitConverterTab(),
-  ),
-),
+      ToolData("Acid Tools", Icons.ac_unit, const AcidToolsPage()),
+      ToolData(
+        "Unit Converter",
+        Icons.swap_horiz,
+        const DefaultTabController(
+          length: 4,
+          child: UnitConverterTab(),
+        ),
+      ),
     ];
 
     return Scaffold(
@@ -46,12 +48,17 @@ ToolData(
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               leading: Icon(tool.icon, size: 30, color: Theme.of(context).colorScheme.primary),
-              title: Text(tool.name, style: Theme.of(context).textTheme.titleMedium),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => tool.page),
+              title: Text(
+                tool.name,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => tool.page),
+                );
+              },
             ),
           );
         },

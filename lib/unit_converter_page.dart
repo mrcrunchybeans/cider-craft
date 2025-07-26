@@ -131,12 +131,16 @@ class _UnitConverterCategoryTabState extends State<UnitConverterCategoryTab> {
   double _convertTemp(double val, String from, String to) {
     if (from == to) return val;
     if (from == '°C') return to == '°F' ? val * 9 / 5 + 32 : val + 273.15;
-    if (from == '°F') return to == '°C'
+    if (from == '°F') {
+      return to == '°C'
         ? (val - 32) * 5 / 9
         : (val - 32) * 5 / 9 + 273.15;
-    if (from == 'K') return to == '°C'
+    }
+    if (from == 'K') {
+      return to == '°C'
         ? val - 273.15
         : (val - 273.15) * 9 / 5 + 32;
+    }
     return val;
   }
 
